@@ -24,9 +24,21 @@ class Image(db.Model):
     likes = db.Column(db.Integer, default=0)
     dislikes = db.Column(db.Integer, default=0)
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
+    additional_images = db.relationship('AdditionalImage', backref='main_image', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<Image {self.name}>'
+
+class AdditionalImage(db.Model):
+    __tablename__ = 'additional_images'
+    id = db.Column(db.Integer, primary_key=True)
+    main_image_id = db.Column(db.Integer, db.ForeignKey('image.id'), nullable=False)
+    image_data = db.Column(db.LargeBinary, nullable=False)
+    image_type = db.Column(db.String(20), nullable=False)
+    upload_date = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<AdditionalImage {self.id}>'
 
 with app.app_context():
     db.create_all()
@@ -42,6 +54,15 @@ def get_image(image_id):
     return send_file(
         BytesIO(image.image_data),
         mimetype=image.image_type,
+        as_attachment=False
+    )
+
+@app.route('/additional_image/<int:image_id>/<int:index>')
+def get_additional_image(image_id, index):
+    additional_image = AdditionalImage.query.filter_by(main_image_id=image_id).offset(index).first_or_404()
+    return send_file(
+        BytesIO(additional_image.image_data),
+        mimetype=additional_image.image_type,
         as_attachment=False
     )
 
@@ -72,6 +93,35 @@ def upload():
         
         flash('Imagem enviada com sucesso!')
         return redirect(url_for('index'))
+
+@app.route('/add_images/<int:image_id>', methods=['POST'])
+def add_images(image_id):
+    main_image = Image.query.get_or_404(image_id)
+    
+    if 'additional_images' not in request.files:
+        flash('Nenhum arquivo selecionado')
+        return redirect(url_for('index'))
+    
+    files = request.files.getlist('additional_images')
+    if not files or files[0].filename == '':
+        flash('Nenhum arquivo selecionado')
+        return redirect(url_for('index'))
+    
+    for file in files:
+        if file:
+            image_data = file.read()
+            image_type = file.content_type
+            
+            new_additional_image = AdditionalImage(
+                main_image_id=image_id,
+                image_data=image_data,
+                image_type=image_type
+            )
+            db.session.add(new_additional_image)
+    
+    db.session.commit()
+    flash('Imagens adicionais enviadas com sucesso!')
+    return redirect(url_for('index'))
 
 @app.route('/like/<int:image_id>', methods=['POST'])
 def like(image_id):

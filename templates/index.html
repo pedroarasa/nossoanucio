@@ -529,6 +529,32 @@
             margin-top: 5px;
             display: none;
         }
+
+        /* Estilos para o modal de imagens */
+        .main-image-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .main-image-container img {
+            max-height: 400px;
+            width: auto;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .additional-images-grid {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .additional-images-grid h6 {
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -669,10 +695,13 @@
                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
                                 <div class="modal-body">
-                                    <img src="{{ url_for('get_image', image_id=image.id) }}" class="img-fluid modal-image" alt="{{ image.name }}">
-                                    
+                                    <!-- Imagem principal -->
+                                    <div class="main-image-container mb-4">
+                                        <img src="{{ url_for('get_image', image_id=image.id) }}" class="img-fluid modal-image" alt="{{ image.name }}">
+                                    </div>
+
                                     <!-- Formulário para adicionar mais imagens -->
-                                    <div class="add-more-images mt-4">
+                                    <div class="add-more-images">
                                         <h6>Adicionar mais imagens a este post</h6>
                                         <form action="{{ url_for('add_images', image_id=image.id) }}" method="post" enctype="multipart/form-data" class="additional-images-form">
                                             <div class="custom-file-upload-sm" onclick="document.getElementById('additionalImages{{ image.id }}').click()">
@@ -692,17 +721,18 @@
                                     </div>
 
                                     <!-- Grid de imagens adicionais existentes -->
-                                    <div class="row mt-3">
-                                        {% for i in range(1, 11) %}
-                                            {% if image.additional_images and image.additional_images[i-1] %}
+                                    <div class="additional-images-grid mt-4">
+                                        <h6>Imagens adicionais</h6>
+                                        <div class="row">
+                                            {% for additional_image in image.additional_images %}
                                                 <div class="col-4 col-md-3 mb-3">
-                                                    <img src="{{ url_for('get_additional_image', image_id=image.id, index=i-1) }}" 
+                                                    <img src="{{ url_for('get_additional_image', image_id=image.id, index=loop.index0) }}" 
                                                          class="img-fluid modal-image" 
-                                                         alt="Imagem adicional {{ i }}"
+                                                         alt="Imagem adicional {{ loop.index }}"
                                                          onclick="changeMainImage(this)">
                                                 </div>
-                                            {% endif %}
-                                        {% endfor %}
+                                            {% endfor %}
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="modal-footer">
@@ -756,11 +786,12 @@
             }
         });
 
-        // Trocar imagem principal no modal
+        // Função para trocar a imagem principal no modal
         function changeMainImage(clickedImage) {
-            const modal = clickedImage.closest('.modal-body');
-            const mainImage = modal.querySelector('.modal-image');
-            mainImage.src = clickedImage.src;
+            const mainImageContainer = document.querySelector('.main-image-container img');
+            mainImageContainer.src = clickedImage.src;
+            mainImageContainer.classList.add('animate__animated', 'animate__fadeIn');
+            setTimeout(() => mainImageContainer.classList.remove('animate__animated', 'animate__fadeIn'), 1000);
         }
 
         // Gerenciamento de arquivos selecionados
