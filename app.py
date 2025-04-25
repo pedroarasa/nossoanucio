@@ -13,6 +13,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 db = SQLAlchemy(app)
 
 class Image(db.Model):
+    __tablename__ = 'image'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     phone = db.Column(db.String(20), nullable=False)
