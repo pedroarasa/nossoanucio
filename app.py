@@ -4,6 +4,7 @@ from werkzeug.utils import secure_filename
 import os
 from datetime import datetime
 import base64
+from io import BytesIO
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui'
@@ -39,7 +40,7 @@ def index():
 def get_image(image_id):
     image = Image.query.get_or_404(image_id)
     return send_file(
-        image.image_data,
+        BytesIO(image.image_data),
         mimetype=image.image_type,
         as_attachment=False
     )
@@ -86,6 +87,18 @@ def dislike(image_id):
     db.session.commit()
     return jsonify({'dislikes': image.dislikes})
 
+@app.route('/delete/<int:image_id>', methods=['POST'])
+def delete_image(image_id):
+    password = request.form.get('password')
+    if password == '2121':
+        image = Image.query.get_or_404(image_id)
+        db.session.delete(image)
+        db.session.commit()
+        flash('Imagem deletada com sucesso!')
+    else:
+        flash('Senha incorreta!')
+    return redirect(url_for('index'))
+
 @app.route('/search')
 def search():
     query = request.args.get('q', '')
@@ -94,17 +107,6 @@ def search():
         (Image.description.contains(query))
     ).all()
     return render_template('index.html', images=images, query=query)
-
-@app.route('/delete_all', methods=['POST'])
-def delete_all():
-    password = request.form.get('password')
-    if password == '2121':
-        Image.query.delete()
-        db.session.commit()
-        flash('Todas as imagens foram deletadas com sucesso!')
-    else:
-        flash('Senha incorreta!')
-    return redirect(url_for('index'))
 
 if __name__ == '__main__':
     app.run(debug=True) 
