@@ -91,11 +91,16 @@ def upload():
         db.session.add(new_image)
         db.session.commit()
         
-        flash('Imagem enviada com sucesso!')
+        flash('Imagem principal enviada com sucesso!')
         return redirect(url_for('index'))
 
-@app.route('/add_images/<int:image_id>', methods=['POST'])
-def add_images(image_id):
+@app.route('/add_images', methods=['POST'])
+def add_images():
+    image_id = request.form.get('image_id')
+    if not image_id:
+        flash('Selecione uma imagem principal')
+        return redirect(url_for('index'))
+    
     main_image = Image.query.get_or_404(image_id)
     
     if 'additional_images' not in request.files:
@@ -105,6 +110,10 @@ def add_images(image_id):
     files = request.files.getlist('additional_images')
     if not files or files[0].filename == '':
         flash('Nenhum arquivo selecionado')
+        return redirect(url_for('index'))
+    
+    if len(files) > 10:
+        flash('Você pode adicionar no máximo 10 imagens extras')
         return redirect(url_for('index'))
     
     for file in files:
@@ -120,7 +129,7 @@ def add_images(image_id):
             db.session.add(new_additional_image)
     
     db.session.commit()
-    flash('Imagens adicionais enviadas com sucesso!')
+    flash('Imagens extras adicionadas com sucesso!')
     return redirect(url_for('index'))
 
 @app.route('/like/<int:image_id>', methods=['POST'])

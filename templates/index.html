@@ -587,23 +587,19 @@
             </form>
         </div>
 
-        <!-- Formulário de Upload -->
+        <!-- Formulário de Upload Principal -->
         <div class="upload-card animate__animated animate__fadeInUp">
             <div class="card-body">
                 <h5 class="card-title">
-                    <i class="fas fa-cloud-upload-alt"></i> Enviar Nova Imagem
+                    <i class="fas fa-cloud-upload-alt"></i> Enviar Imagem Principal
                 </h5>
                 <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data" id="uploadForm" class="upload-form">
                     <div class="custom-file-upload" onclick="document.getElementById('imageInput').click()">
-                        <i class="fas fa-images"></i>
-                        <p>Escolha suas fotos</p>
-                        <small class="text-muted">Clique ou arraste arquivos aqui</small>
-                        <div class="file-info mt-2">
-                            <span id="fileCount">0 arquivos selecionados</span>
-                        </div>
+                        <i class="fas fa-image"></i>
+                        <p>Escolha sua foto principal</p>
+                        <small class="text-muted">Clique ou arraste o arquivo aqui</small>
                     </div>
-                    <input type="file" id="imageInput" name="image" accept="image/*" multiple required style="display: none;">
-                    <div class="selected-files mt-3" id="selectedFiles"></div>
+                    <input type="file" id="imageInput" name="image" accept="image/*" required style="display: none;">
                     <div class="mb-3">
                         <input type="text" class="form-control" name="name" placeholder="Nome" required>
                     </div>
@@ -613,13 +609,40 @@
                     <div class="mb-3">
                         <textarea class="form-control" name="description" placeholder="Descrição" rows="3"></textarea>
                     </div>
-                    <div class="upload-progress">
-                        <div class="progress">
-                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    <button type="submit" class="btn btn-custom">
+                        <i class="fas fa-upload"></i> Enviar Imagem Principal
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Formulário de Upload de Imagens Adicionais -->
+        <div class="upload-card animate__animated animate__fadeInUp">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="fas fa-images"></i> Adicionar Imagens Extras
+                </h5>
+                <form action="{{ url_for('add_images') }}" method="post" enctype="multipart/form-data" id="additionalUploadForm" class="upload-form">
+                    <div class="mb-3">
+                        <select class="form-control" name="image_id" required>
+                            <option value="">Selecione a imagem principal</option>
+                            {% for image in images %}
+                                <option value="{{ image.id }}">{{ image.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="custom-file-upload" onclick="document.getElementById('additionalImagesInput').click()">
+                        <i class="fas fa-images"></i>
+                        <p>Adicionar até 10 imagens extras</p>
+                        <small class="text-muted">Clique ou arraste os arquivos aqui</small>
+                        <div class="file-info mt-2">
+                            <span id="additionalFileCount">0 arquivos selecionados</span>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-custom">
-                        <i class="fas fa-upload"></i> Enviar Todas as Fotos
+                    <input type="file" id="additionalImagesInput" name="additional_images" accept="image/*" multiple style="display: none;">
+                    <div class="selected-files mt-3" id="additionalSelectedFiles"></div>
+                    <button type="submit" class="btn btn-custom mt-3">
+                        <i class="fas fa-plus"></i> Adicionar Imagens Extras
                     </button>
                 </form>
             </div>
@@ -921,49 +944,46 @@
         });
 
         // Gerenciamento de arquivos adicionais
-        function setupAdditionalImagesUpload(imageId) {
-            const fileInput = document.getElementById(`additionalImages${imageId}`);
-            const selectedFiles = document.getElementById(`additionalSelectedFiles${imageId}`);
-            const fileCount = document.getElementById(`additionalFileCount${imageId}`);
-            const MAX_FILES = 10;
+        const additionalImagesInput = document.getElementById('additionalImagesInput');
+        const additionalSelectedFiles = document.getElementById('additionalSelectedFiles');
+        const additionalFileCount = document.getElementById('additionalFileCount');
+        const MAX_FILES = 10;
 
-            fileInput.addEventListener('change', function() {
-                selectedFiles.innerHTML = '';
-                const files = this.files;
-                
-                if (files.length > MAX_FILES) {
-                    alert(`Você pode adicionar no máximo ${MAX_FILES} imagens por vez.`);
-                    this.value = '';
-                    return;
+        additionalImagesInput.addEventListener('change', function() {
+            additionalSelectedFiles.innerHTML = '';
+            const files = this.files;
+            
+            if (files.length > MAX_FILES) {
+                alert(`Você pode adicionar no máximo ${MAX_FILES} imagens extras.`);
+                this.value = '';
+                return;
+            }
+            
+            additionalFileCount.textContent = `${files.length} arquivo(s) selecionado(s)`;
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const preview = document.createElement('div');
+                        preview.className = 'file-preview';
+                        preview.innerHTML = `
+                            <img src="${e.target.result}" alt="${file.name}">
+                            <div class="remove-file" onclick="removeAdditionalFile(${i})">
+                                <i class="fas fa-times"></i>
+                            </div>
+                        `;
+                        additionalSelectedFiles.appendChild(preview);
+                    };
+                    reader.readAsDataURL(file);
                 }
-                
-                fileCount.textContent = `${files.length} arquivo(s) selecionado(s)`;
-                
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    if (file.type.startsWith('image/')) {
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            const preview = document.createElement('div');
-                            preview.className = 'file-preview';
-                            preview.innerHTML = `
-                                <img src="${e.target.result}" alt="${file.name}">
-                                <div class="remove-file" onclick="removeAdditionalFile(${imageId}, ${i})">
-                                    <i class="fas fa-times"></i>
-                                </div>
-                            `;
-                            selectedFiles.appendChild(preview);
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                }
-            });
-        }
+            }
+        });
 
-        function removeAdditionalFile(imageId, index) {
-            const fileInput = document.getElementById(`additionalImages${imageId}`);
+        function removeAdditionalFile(index) {
             const dt = new DataTransfer();
-            const files = fileInput.files;
+            const files = additionalImagesInput.files;
             
             for (let i = 0; i < files.length; i++) {
                 if (i !== index) {
@@ -971,17 +991,9 @@
                 }
             }
             
-            fileInput.files = dt.files;
-            fileInput.dispatchEvent(new Event('change'));
+            additionalImagesInput.files = dt.files;
+            additionalImagesInput.dispatchEvent(new Event('change'));
         }
-
-        // Inicializar o upload de imagens adicionais para cada modal
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('show.bs.modal', function() {
-                const imageId = this.id.replace('imageModal', '');
-                setupAdditionalImagesUpload(imageId);
-            });
-        });
     </script>
 </body>
 </html> 
