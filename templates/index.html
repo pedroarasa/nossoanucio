@@ -471,6 +471,64 @@
         .additional-image:hover {
             transform: scale(1.05);
         }
+
+        /* Estilos para o formulário de imagens adicionais */
+        .add-more-images {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .custom-file-upload-sm {
+            border: 2px dashed var(--primary-color);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .custom-file-upload-sm:hover {
+            background: rgba(255, 255, 255, 0.8);
+            transform: translateY(-2px);
+            border-color: var(--secondary-color);
+        }
+
+        .custom-file-upload-sm i {
+            font-size: 2rem;
+            color: var(--primary-color);
+            margin-bottom: 5px;
+        }
+
+        .custom-file-upload-sm p {
+            margin: 0;
+            color: var(--secondary-color);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .selected-files-sm {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .selected-files-sm .file-preview {
+            width: 80px;
+            height: 80px;
+        }
+
+        /* Limitar o número de arquivos selecionados */
+        .file-limit-message {
+            color: var(--accent-color);
+            font-size: 0.8rem;
+            margin-top: 5px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -612,6 +670,28 @@
                                 </div>
                                 <div class="modal-body">
                                     <img src="{{ url_for('get_image', image_id=image.id) }}" class="img-fluid modal-image" alt="{{ image.name }}">
+                                    
+                                    <!-- Formulário para adicionar mais imagens -->
+                                    <div class="add-more-images mt-4">
+                                        <h6>Adicionar mais imagens a este post</h6>
+                                        <form action="{{ url_for('add_images', image_id=image.id) }}" method="post" enctype="multipart/form-data" class="additional-images-form">
+                                            <div class="custom-file-upload-sm" onclick="document.getElementById('additionalImages{{ image.id }}').click()">
+                                                <i class="fas fa-plus-circle"></i>
+                                                <p>Adicionar até 10 imagens</p>
+                                                <small class="text-muted">Clique ou arraste arquivos aqui</small>
+                                                <div class="file-info mt-2">
+                                                    <span id="additionalFileCount{{ image.id }}">0 arquivos selecionados</span>
+                                                </div>
+                                            </div>
+                                            <input type="file" id="additionalImages{{ image.id }}" name="additional_images" accept="image/*" multiple style="display: none;">
+                                            <div class="selected-files-sm mt-3" id="additionalSelectedFiles{{ image.id }}"></div>
+                                            <button type="submit" class="btn btn-custom mt-3">
+                                                <i class="fas fa-plus"></i> Adicionar Imagens
+                                            </button>
+                                        </form>
+                                    </div>
+
+                                    <!-- Grid de imagens adicionais existentes -->
                                     <div class="row mt-3">
                                         {% for i in range(1, 11) %}
                                             {% if image.additional_images and image.additional_images[i-1] %}
@@ -807,6 +887,69 @@
                     clearInterval(interval);
                 }
             }, 200);
+        });
+
+        // Gerenciamento de arquivos adicionais
+        function setupAdditionalImagesUpload(imageId) {
+            const fileInput = document.getElementById(`additionalImages${imageId}`);
+            const selectedFiles = document.getElementById(`additionalSelectedFiles${imageId}`);
+            const fileCount = document.getElementById(`additionalFileCount${imageId}`);
+            const MAX_FILES = 10;
+
+            fileInput.addEventListener('change', function() {
+                selectedFiles.innerHTML = '';
+                const files = this.files;
+                
+                if (files.length > MAX_FILES) {
+                    alert(`Você pode adicionar no máximo ${MAX_FILES} imagens por vez.`);
+                    this.value = '';
+                    return;
+                }
+                
+                fileCount.textContent = `${files.length} arquivo(s) selecionado(s)`;
+                
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    if (file.type.startsWith('image/')) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const preview = document.createElement('div');
+                            preview.className = 'file-preview';
+                            preview.innerHTML = `
+                                <img src="${e.target.result}" alt="${file.name}">
+                                <div class="remove-file" onclick="removeAdditionalFile(${imageId}, ${i})">
+                                    <i class="fas fa-times"></i>
+                                </div>
+                            `;
+                            selectedFiles.appendChild(preview);
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                }
+            });
+        }
+
+        function removeAdditionalFile(imageId, index) {
+            const fileInput = document.getElementById(`additionalImages${imageId}`);
+            const dt = new DataTransfer();
+            const files = fileInput.files;
+            
+            for (let i = 0; i < files.length; i++) {
+                if (i !== index) {
+                    dt.items.add(files[i]);
+                }
+            }
+            
+            fileInput.files = dt.files;
+            fileInput.dispatchEvent(new Event('change'));
+        }
+
+        // Inicializar o upload de imagens adicionais para cada modal
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('show.bs.modal', function() {
+                const imageId = this.id.replace('imageModal', '');
+                setupAdditionalImagesUpload(imageId);
+            });
         });
     </script>
 </body>
