@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
     <style>
         :root {
             --primary-color: #4a90e2;
@@ -289,6 +290,136 @@
                 font-size: 0.9rem;
             }
         }
+
+        /* Estilos para o modal de imagens */
+        .modal-image {
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .modal-image:hover {
+            transform: scale(1.05);
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: none;
+        }
+
+        .modal-header {
+            border-bottom: none;
+            padding: 20px;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            border-top: none;
+            padding: 20px;
+        }
+
+        /* Estilos para o calendário */
+        .calendar-container {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .date-time {
+            font-size: 1.2rem;
+            color: var(--secondary-color);
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        /* Estilos para o botão de upload personalizado */
+        .custom-file-upload {
+            border: 2px dashed var(--primary-color);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.5);
+            margin-bottom: 20px;
+        }
+
+        .custom-file-upload:hover {
+            background: rgba(255, 255, 255, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .custom-file-upload i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+
+        .custom-file-upload p {
+            margin: 0;
+            color: var(--secondary-color);
+            font-size: 1.1rem;
+        }
+
+        /* Estilos para o botão de voltar */
+        .back-to-top {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--secondary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Estilos para imagens adicionais */
+        .additional-images {
+            display: none;
+            margin-top: 10px;
+        }
+
+        .image-card:hover .additional-images {
+            display: block;
+        }
+
+        .additional-image {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .additional-image:hover {
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
@@ -297,6 +428,12 @@
             <a class="navbar-brand" href="#">
                 <i class="fas fa-camera-retro"></i> Galeria 2025
             </a>
+            <div class="ms-auto">
+                <div class="date-time">
+                    <i class="fas fa-calendar-alt"></i> <span id="current-date"></span>
+                    <i class="fas fa-clock ms-2"></i> <span id="current-time"></span>
+                </div>
+            </div>
         </div>
     </nav>
 
@@ -322,9 +459,12 @@
                     <i class="fas fa-cloud-upload-alt"></i> Enviar Nova Imagem
                 </h5>
                 <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data" id="uploadForm" class="upload-form">
-                    <div class="mb-3">
-                        <input type="file" class="form-control" name="image" accept="image/*" required>
+                    <div class="custom-file-upload" onclick="document.getElementById('imageInput').click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Escolha sua foto</p>
+                        <small class="text-muted">Clique ou arraste arquivos aqui</small>
                     </div>
+                    <input type="file" id="imageInput" name="image" accept="image/*" required style="display: none;">
                     <div class="mb-3">
                         <input type="text" class="form-control" name="name" placeholder="Nome" required>
                     </div>
@@ -363,8 +503,19 @@
                 {% for image in images %}
                     <div class="col-12 col-sm-6 col-md-4 animate__animated animate__fadeInUp">
                         <div class="card image-card">
-                            <div class="image-container">
+                            <div class="image-container" data-bs-toggle="modal" data-bs-target="#imageModal{{ image.id }}">
                                 <img src="{{ url_for('get_image', image_id=image.id) }}" alt="{{ image.name }}">
+                            </div>
+                            <div class="additional-images">
+                                {% for i in range(1, 11) %}
+                                    {% if image.additional_images and image.additional_images[i-1] %}
+                                        <img src="{{ url_for('get_additional_image', image_id=image.id, index=i-1) }}" 
+                                             class="additional-image" 
+                                             alt="Imagem adicional {{ i }}"
+                                             data-bs-toggle="modal" 
+                                             data-bs-target="#imageModal{{ image.id }}">
+                                    {% endif %}
+                                {% endfor %}
                             </div>
                             <div class="image-info">
                                 <h5 class="image-title">{{ image.name }}</h5>
@@ -395,6 +546,36 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Modal para a imagem -->
+                    <div class="modal fade" id="imageModal{{ image.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">{{ image.name }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <img src="{{ url_for('get_image', image_id=image.id) }}" class="img-fluid modal-image" alt="{{ image.name }}">
+                                    <div class="row mt-3">
+                                        {% for i in range(1, 11) %}
+                                            {% if image.additional_images and image.additional_images[i-1] %}
+                                                <div class="col-4 col-md-3 mb-3">
+                                                    <img src="{{ url_for('get_additional_image', image_id=image.id, index=i-1) }}" 
+                                                         class="img-fluid modal-image" 
+                                                         alt="Imagem adicional {{ i }}"
+                                                         onclick="changeMainImage(this)">
+                                                </div>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 {% endfor %}
             {% else %}
                 <div class="col-12">
@@ -410,8 +591,62 @@
         <i class="fas fa-plus"></i>
     </div>
 
+    <div class="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+        <i class="fas fa-arrow-up"></i>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
+        // Atualizar data e hora
+        function updateDateTime() {
+            const now = new Date();
+            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            
+            document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', dateOptions);
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('pt-BR', timeOptions);
+        }
+
+        setInterval(updateDateTime, 1000);
+        updateDateTime();
+
+        // Mostrar/esconder botão de voltar ao topo
+        window.addEventListener('scroll', function() {
+            const backToTop = document.querySelector('.back-to-top');
+            if (window.scrollY > 300) {
+                backToTop.classList.add('visible');
+            } else {
+                backToTop.classList.remove('visible');
+            }
+        });
+
+        // Trocar imagem principal no modal
+        function changeMainImage(clickedImage) {
+            const modal = clickedImage.closest('.modal-body');
+            const mainImage = modal.querySelector('.modal-image');
+            mainImage.src = clickedImage.src;
+        }
+
+        // Drag and drop para upload
+        const dropZone = document.querySelector('.custom-file-upload');
+        const fileInput = document.getElementById('imageInput');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.background = 'rgba(255, 255, 255, 0.9)';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.background = 'rgba(255, 255, 255, 0.5)';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.background = 'rgba(255, 255, 255, 0.5)';
+            fileInput.files = e.dataTransfer.files;
+        });
+
         // Animações de scroll
         document.addEventListener('DOMContentLoaded', function() {
             const cards = document.querySelectorAll('.image-card');
