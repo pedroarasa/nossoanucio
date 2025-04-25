@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galeria de Imagens</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .image-card {
+            margin-bottom: 20px;
+        }
+        .image-container {
+            position: relative;
+            margin-bottom: 10px;
+            height: 200px;
+            overflow: hidden;
+        }
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .reaction-buttons {
+            margin-top: 10px;
+        }
+        .search-bar {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="text-center mb-4">Galeria de Imagens</h1>
+
+        <!-- Barra de Pesquisa -->
+        <div class="search-bar">
+            <form action="{{ url_for('search') }}" method="get">
+                <div class="input-group">
+                    <input type="text" class="form-control" name="q" placeholder="Pesquisar por nome ou descrição..." value="{{ query }}">
+                    <button class="btn btn-primary" type="submit">Pesquisar</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Formulário de Upload -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Enviar Nova Imagem</h5>
+                <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <input type="file" class="form-control" name="image" accept="image/*" required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="text" class="form-control" name="name" placeholder="Nome" required>
+                    </div>
+                    <div class="mb-3">
+                        <input type="tel" class="form-control" name="phone" placeholder="Telefone" required>
+                    </div>
+                    <div class="mb-3">
+                        <textarea class="form-control" name="description" placeholder="Descrição" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Enviar</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Botão de Deletar Tudo -->
+        <div class="mb-4">
+            <form action="{{ url_for('delete_all') }}" method="post">
+                <div class="input-group">
+                    <input type="password" class="form-control" name="password" placeholder="Digite a senha para deletar tudo">
+                    <button class="btn btn-danger" type="submit">Deletar Tudo</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Mensagens Flash -->
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-info">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Lista de Imagens -->
+        <div class="row">
+            {% if images %}
+                {% for image in images %}
+                    <div class="col-md-4">
+                        <div class="card image-card">
+                            <div class="image-container">
+                                <img src="{{ url_for('get_image', image_id=image.id) }}" alt="{{ image.name }}">
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">{{ image.name }}</h5>
+                                <p class="card-text">{{ image.phone }}</p>
+                                <p class="card-text">{{ image.description }}</p>
+                                <div class="reaction-buttons">
+                                    <button class="btn btn-success like-btn" data-image-id="{{ image.id }}">Gostei ({{ image.likes }})</button>
+                                    <button class="btn btn-danger dislike-btn" data-image-id="{{ image.id }}">Não Gostei ({{ image.dislikes }})</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <div class="alert alert-warning">Nenhuma imagem encontrada.</div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.querySelectorAll('.like-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const imageId = this.dataset.imageId;
+                fetch(`/like/${imageId}`, { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        this.textContent = `Gostei (${data.likes})`;
+                    });
+            });
+        });
+
+        document.querySelectorAll('.dislike-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const imageId = this.dataset.imageId;
+                fetch(`/dislike/${imageId}`, { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        this.textContent = `Não Gostei (${data.dislikes})`;
+                    });
+            });
+        });
+    </script>
+</body>
+</html> 
