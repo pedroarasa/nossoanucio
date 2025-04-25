@@ -348,11 +348,13 @@
             transition: all 0.3s ease;
             background: rgba(255, 255, 255, 0.5);
             margin-bottom: 20px;
+            position: relative;
         }
 
         .custom-file-upload:hover {
             background: rgba(255, 255, 255, 0.8);
             transform: translateY(-2px);
+            border-color: var(--secondary-color);
         }
 
         .custom-file-upload i {
@@ -365,6 +367,55 @@
             margin: 0;
             color: var(--secondary-color);
             font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .custom-file-upload .file-info {
+            color: var(--primary-color);
+            font-size: 0.9rem;
+        }
+
+        .selected-files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .file-preview {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .file-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .file-preview .remove-file {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--accent-color);
+            font-size: 0.8rem;
+        }
+
+        .file-preview .remove-file:hover {
+            background: var(--accent-color);
+            color: white;
         }
 
         /* Estilos para o botão de voltar */
@@ -460,11 +511,15 @@
                 </h5>
                 <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data" id="uploadForm" class="upload-form">
                     <div class="custom-file-upload" onclick="document.getElementById('imageInput').click()">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        <p>Escolha sua foto</p>
+                        <i class="fas fa-images"></i>
+                        <p>Escolha suas fotos</p>
                         <small class="text-muted">Clique ou arraste arquivos aqui</small>
+                        <div class="file-info mt-2">
+                            <span id="fileCount">0 arquivos selecionados</span>
+                        </div>
                     </div>
-                    <input type="file" id="imageInput" name="image" accept="image/*" required style="display: none;">
+                    <input type="file" id="imageInput" name="image" accept="image/*" multiple required style="display: none;">
+                    <div class="selected-files mt-3" id="selectedFiles"></div>
                     <div class="mb-3">
                         <input type="text" class="form-control" name="name" placeholder="Nome" required>
                     </div>
@@ -480,7 +535,7 @@
                         </div>
                     </div>
                     <button type="submit" class="btn btn-custom">
-                        <i class="fas fa-upload"></i> Enviar
+                        <i class="fas fa-upload"></i> Enviar Todas as Fotos
                     </button>
                 </form>
             </div>
@@ -628,23 +683,73 @@
             mainImage.src = clickedImage.src;
         }
 
-        // Drag and drop para upload
-        const dropZone = document.querySelector('.custom-file-upload');
+        // Gerenciamento de arquivos selecionados
         const fileInput = document.getElementById('imageInput');
+        const selectedFiles = document.getElementById('selectedFiles');
+        const fileCount = document.getElementById('fileCount');
+
+        fileInput.addEventListener('change', function() {
+            selectedFiles.innerHTML = '';
+            const files = this.files;
+            fileCount.textContent = `${files.length} arquivo(s) selecionado(s)`;
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const preview = document.createElement('div');
+                        preview.className = 'file-preview';
+                        preview.innerHTML = `
+                            <img src="${e.target.result}" alt="${file.name}">
+                            <div class="remove-file" onclick="removeFile(${i})">
+                                <i class="fas fa-times"></i>
+                            </div>
+                        `;
+                        selectedFiles.appendChild(preview);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+        });
+
+        function removeFile(index) {
+            const dt = new DataTransfer();
+            const files = fileInput.files;
+            
+            for (let i = 0; i < files.length; i++) {
+                if (i !== index) {
+                    dt.items.add(files[i]);
+                }
+            }
+            
+            fileInput.files = dt.files;
+            fileInput.dispatchEvent(new Event('change'));
+        }
+
+        // Drag and drop melhorado
+        const dropZone = document.querySelector('.custom-file-upload');
 
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropZone.style.background = 'rgba(255, 255, 255, 0.9)';
+            dropZone.style.borderColor = 'var(--secondary-color)';
         });
 
         dropZone.addEventListener('dragleave', () => {
             dropZone.style.background = 'rgba(255, 255, 255, 0.5)';
+            dropZone.style.borderColor = 'var(--primary-color)';
         });
 
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.style.background = 'rgba(255, 255, 255, 0.5)';
-            fileInput.files = e.dataTransfer.files;
+            dropZone.style.borderColor = 'var(--primary-color)';
+            
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                fileInput.dispatchEvent(new Event('change'));
+            }
         });
 
         // Animações de scroll
