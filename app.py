@@ -68,31 +68,55 @@ def get_additional_image(image_id, index):
 
 @app.route('/upload', methods=['POST'])
 def upload():
-    if 'image' not in request.files:
+    if 'images' not in request.files:
         flash('Nenhum arquivo selecionado')
-        return redirect(request.url)
-    
-    file = request.files['image']
-    if file.filename == '':
-        flash('Nenhum arquivo selecionado')
-        return redirect(request.url)
-    
-    if file:
-        image_data = file.read()
-        image_type = file.content_type
-        
-        new_image = Image(
-            name=request.form['name'],
-            phone=request.form['phone'],
-            description=request.form['description'],
-            image_data=image_data,
-            image_type=image_type
-        )
-        db.session.add(new_image)
-        db.session.commit()
-        
-        flash('Imagem principal enviada com sucesso!')
         return redirect(url_for('index'))
+    
+    files = request.files.getlist('images')
+    if not files or files[0].filename == '':
+        flash('Nenhum arquivo selecionado')
+        return redirect(url_for('index'))
+    
+    if len(files) > 10:
+        flash('Você pode adicionar no máximo 10 imagens')
+        return redirect(url_for('index'))
+    
+    main_image_index = int(request.form.get('main_image_index', 0))
+    if main_image_index >= len(files):
+        flash('Índice da imagem principal inválido')
+        return redirect(url_for('index'))
+    
+    # Criar o registro principal
+    main_image = files[main_image_index]
+    main_image_data = main_image.read()
+    main_image_type = main_image.content_type
+    
+    new_image = Image(
+        name=request.form['name'],
+        phone=request.form['phone'],
+        description=request.form['description'],
+        image_data=main_image_data,
+        image_type=main_image_type
+    )
+    db.session.add(new_image)
+    db.session.commit()
+    
+    # Adicionar imagens adicionais
+    for i, file in enumerate(files):
+        if i != main_image_index:
+            image_data = file.read()
+            image_type = file.content_type
+            
+            new_additional_image = AdditionalImage(
+                main_image_id=new_image.id,
+                image_data=image_data,
+                image_type=image_type
+            )
+            db.session.add(new_additional_image)
+    
+    db.session.commit()
+    flash('Imagens enviadas com sucesso!')
+    return redirect(url_for('index'))
 
 @app.route('/add_images', methods=['POST'])
 def add_images():
