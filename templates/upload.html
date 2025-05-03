@@ -103,15 +103,17 @@
         <div class="upload-container">
             <h2 class="mb-4">Upload de Imagens</h2>
             
-            {% with messages = get_flashed_messages() %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-info">{{ message }}</div>
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'info' }}">
+                            {{ message }}
+                        </div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
 
-            <form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data" id="uploadForm">
                 <div class="mb-3">
                     <label for="name" class="form-label">Nome</label>
                     <input type="text" class="form-control" id="name" name="name" required>
@@ -130,16 +132,17 @@
                 <div class="mb-3">
                     <label class="form-label">Selecione as Imagens</label>
                     <div class="file-input-wrapper">
-                        <input type="file" id="images" name="images" multiple accept="image/*" class="form-control">
+                        <input type="file" id="images" name="images" multiple accept="image/*" class="form-control" required>
                         <div class="custom-file-btn">Escolher Imagens</div>
                     </div>
                     <small class="text-muted">Você pode selecionar até 10 imagens. A primeira imagem será a principal.</small>
+                    <div id="fileError" class="text-danger mt-1" style="display: none;"></div>
                 </div>
 
                 <div id="preview" class="preview-container"></div>
                 <input type="hidden" id="main_image_index" name="main_image_index" value="0">
 
-                <button type="submit" class="btn btn-primary mt-3">Enviar Imagens</button>
+                <button type="submit" class="btn btn-primary mt-3" id="submitBtn">Enviar Imagens</button>
             </form>
         </div>
     </div>
@@ -148,19 +151,35 @@
         const fileInput = document.getElementById('images');
         const preview = document.getElementById('preview');
         const mainImageIndex = document.getElementById('main_image_index');
+        const fileError = document.getElementById('fileError');
+        const submitBtn = document.getElementById('submitBtn');
         let selectedImages = [];
 
         fileInput.addEventListener('change', function(e) {
             preview.innerHTML = '';
             selectedImages = [];
+            fileError.style.display = 'none';
             
             if (this.files.length > 10) {
-                alert('Você pode selecionar no máximo 10 imagens');
+                fileError.textContent = 'Você pode selecionar no máximo 10 imagens';
+                fileError.style.display = 'block';
                 this.value = '';
                 return;
             }
 
+            if (this.files.length === 0) {
+                fileError.textContent = 'Selecione pelo menos uma imagem';
+                fileError.style.display = 'block';
+                return;
+            }
+
             Array.from(this.files).forEach((file, index) => {
+                if (!file.type.startsWith('image/')) {
+                    fileError.textContent = 'Apenas arquivos de imagem são permitidos';
+                    fileError.style.display = 'block';
+                    return;
+                }
+
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const div = document.createElement('div');
@@ -171,7 +190,6 @@
                     `;
                     preview.appendChild(div);
 
-                    // Adiciona evento de clique para selecionar imagem principal
                     div.addEventListener('click', function() {
                         document.querySelectorAll('.preview-item').forEach(item => {
                             item.classList.remove('selected');
@@ -180,7 +198,6 @@
                         mainImageIndex.value = index;
                     });
 
-                    // Adiciona evento para remover imagem
                     div.querySelector('.remove-btn').addEventListener('click', function(e) {
                         e.stopPropagation();
                         const index = parseInt(this.dataset.index);
@@ -192,6 +209,19 @@
                 reader.readAsDataURL(file);
                 selectedImages.push(file);
             });
+        });
+
+        // Validação do formulário antes de enviar
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            if (fileInput.files.length === 0) {
+                e.preventDefault();
+                fileError.textContent = 'Selecione pelo menos uma imagem';
+                fileError.style.display = 'block';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enviando...';
         });
 
         function updateFileInput() {

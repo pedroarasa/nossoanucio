@@ -141,7 +141,7 @@ def get_additional_image(image_id, index):
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
     if 'user_id' not in session:
-        flash('Você precisa estar logado para fazer upload de imagens')
+        flash('Faça login antes de fazer upload de imagens')
         return redirect(url_for('login'))
     
     if request.method == 'GET':
@@ -165,39 +165,44 @@ def upload():
         flash('Índice da imagem principal inválido')
         return redirect(url_for('upload'))
     
-    # Criar o registro principal
-    main_image = files[main_image_index]
-    main_image_data = process_image(main_image)
-    main_image_type = main_image.content_type
-    
-    new_image = Image(
-        name=request.form['name'],
-        phone=request.form['phone'],
-        description=request.form['description'],
-        image_data=main_image_data,
-        image_type=main_image_type,
-        user_id=session['user_id'],
-        is_public=True
-    )
-    db.session.add(new_image)
-    db.session.commit()
-    
-    # Adicionar imagens adicionais
-    for i, file in enumerate(files):
-        if i != main_image_index:
-            image_data = process_image(file)
-            image_type = file.content_type
-            
-            new_additional_image = AdditionalImage(
-                main_image_id=new_image.id,
-                image_data=image_data,
-                image_type=image_type
-            )
-            db.session.add(new_additional_image)
-    
-    db.session.commit()
-    flash('Imagens enviadas com sucesso!')
-    return redirect(url_for('index'))
+    try:
+        # Criar o registro principal
+        main_image = files[main_image_index]
+        main_image_data = process_image(main_image)
+        main_image_type = main_image.content_type
+        
+        new_image = Image(
+            name=request.form['name'],
+            phone=request.form['phone'],
+            description=request.form['description'],
+            image_data=main_image_data,
+            image_type=main_image_type,
+            user_id=session['user_id'],
+            is_public=True
+        )
+        db.session.add(new_image)
+        db.session.commit()
+        
+        # Adicionar imagens adicionais
+        for i, file in enumerate(files):
+            if i != main_image_index:
+                image_data = process_image(file)
+                image_type = file.content_type
+                
+                new_additional_image = AdditionalImage(
+                    main_image_id=new_image.id,
+                    image_data=image_data,
+                    image_type=image_type
+                )
+                db.session.add(new_additional_image)
+        
+        db.session.commit()
+        flash('Imagens enviadas com sucesso!')
+        return redirect(url_for('index'))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao fazer upload: {str(e)}')
+        return redirect(url_for('upload'))
 
 def process_image(file):
     # Ler a imagem

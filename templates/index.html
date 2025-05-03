@@ -595,16 +595,26 @@
             <a class="navbar-brand" href="{{ url_for('index') }}">Galeria de Imagens</a>
             <div class="navbar-nav ms-auto">
                 {% if session.get('user_id') %}
-                    <a class="nav-link" href="{{ url_for('upload') }}">Upload</a>
+                    <a class="nav-link btn btn-outline-light me-2" href="{{ url_for('upload') }}">
+                        <i class="fas fa-upload"></i> Upload
+                    </a>
                     <a class="nav-link" href="{{ url_for('logout') }}">Sair</a>
                 {% else %}
-                    <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                    <a class="nav-link btn btn-outline-light" href="{{ url_for('login') }}">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </a>
                 {% endif %}
             </div>
         </div>
     </nav>
 
-    <div class="container mt-5 pt-5">
+    <div class="container mt-4">
+        {% if not session.get('user_id') %}
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle"></i> Faça login para fazer upload de imagens
+            </div>
+        {% endif %}
+
         <h1 class="text-center mb-4 animate__animated animate__fadeIn">Galeria de Imagens</h1>
 
         <!-- Barra de Pesquisa -->
