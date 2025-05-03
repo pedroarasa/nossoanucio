@@ -349,7 +349,7 @@ def toggle_availability(announcement_id):
 def process_image(file):
     try:
         # Lista de formatos de imagem suportados
-        supported_formats = ['JPEG', 'PNG', 'GIF', 'BMP', 'TIFF', 'WEBP']
+        supported_formats = ['JPEG', 'PNG', 'GIF', 'BMP', 'TIFF', 'WEBP', 'HEIC']
         
         # Abrir a imagem
         img = PILImage.open(file)
@@ -366,6 +366,10 @@ def process_image(file):
                 elif orientation == 8:
                     img = img.rotate(90, expand=True)
         
+        # Redimensionar a imagem se for muito grande
+        max_size = (1920, 1920)
+        img.thumbnail(max_size, PILImage.LANCZOS)
+        
         # Verificar se o formato é suportado
         if img.format not in supported_formats:
             # Converter para JPEG se o formato não for suportado
@@ -376,7 +380,7 @@ def process_image(file):
         
         # Converter para bytes
         img_byte_arr = io.BytesIO()
-        img.save(img_byte_arr, format=format_to_save, quality=85)
+        img.save(img_byte_arr, format=format_to_save, quality=85, optimize=True)
         img_byte_arr = img_byte_arr.getvalue()
         
         return img_byte_arr

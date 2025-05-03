@@ -168,7 +168,11 @@
         });
 
         fileInput.addEventListener('change', (e) => {
-            handleFiles(e.target.files);
+            if (e.target.files.length > 0) {
+                handleFiles(e.target.files);
+            } else {
+                alert('Nenhuma imagem foi selecionada. Por favor, tente novamente.');
+            }
         });
 
         function handleFiles(files) {
@@ -177,12 +181,20 @@
                 return;
             }
 
+            let validFiles = 0;
             for (let file of files) {
                 if (!file.type.startsWith('image/')) {
                     alert('Por favor, selecione apenas imagens');
                     continue;
                 }
 
+                // Verificar tamanho máximo (5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert(`A imagem ${file.name} é muito grande. Tamanho máximo permitido: 5MB`);
+                    continue;
+                }
+
+                validFiles++;
                 selectedFiles.push(file);
                 const reader = new FileReader();
                 reader.onload = (e) => {
@@ -196,13 +208,18 @@
                     `;
                     previewContainer.appendChild(previewItem);
                 };
+                reader.onerror = () => {
+                    alert(`Erro ao carregar a imagem ${file.name}. Por favor, tente novamente.`);
+                };
                 reader.readAsDataURL(file);
             }
 
-            // Atualizar o input de arquivo
-            const dataTransfer = new DataTransfer();
-            selectedFiles.forEach(file => dataTransfer.items.add(file));
-            fileInput.files = dataTransfer.files;
+            if (validFiles > 0) {
+                // Atualizar o input de arquivo
+                const dataTransfer = new DataTransfer();
+                selectedFiles.forEach(file => dataTransfer.items.add(file));
+                fileInput.files = dataTransfer.files;
+            }
         }
 
         function removeImage(element) {
