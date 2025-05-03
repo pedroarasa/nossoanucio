@@ -169,26 +169,18 @@
                                     Ver Detalhes
                                 </a>
                             </div>
-                            <div class="mt-2">
+                            <div class="mt-2 d-flex gap-2">
+                                <button class="btn btn-danger delete-btn" 
+                                        data-announcement-id="{{ announcement.id }}"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#deleteModal">
+                                    <i class="fas fa-trash"></i> Excluir com Senha Admin
+                                </button>
                                 <button class="btn btn-danger delete-ok-btn" 
                                         data-announcement-id="{{ announcement.id }}">
                                     <i class="fas fa-trash"></i> Excluir (1212ok)
                                 </button>
                             </div>
-                            {% if session.get('user_id') == announcement.user_id or session.get('is_admin') %}
-                                <div class="mt-2 d-flex gap-2">
-                                    <button class="btn btn-danger delete-btn" 
-                                            data-announcement-id="{{ announcement.id }}"
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#deleteModal">
-                                        <i class="fas fa-trash"></i> Excluir com Senha Admin
-                                    </button>
-                                    <button class="btn btn-danger delete-quick-btn" 
-                                            data-announcement-id="{{ announcement.id }}">
-                                        <i class="fas fa-trash"></i> Excluir Rápido (2020)
-                                    </button>
-                                </div>
-                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -242,26 +234,6 @@
                 const announcementId = this.dataset.announcementId;
                 const form = document.getElementById('deleteForm');
                 form.action = `/delete/${announcementId}`;
-            });
-        });
-
-        document.querySelectorAll('.delete-quick-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const announcementId = this.dataset.announcementId;
-                if (confirm('Tem certeza que deseja excluir este anúncio?')) {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = `/delete/${announcementId}`;
-                    
-                    const passwordInput = document.createElement('input');
-                    passwordInput.type = 'hidden';
-                    passwordInput.name = 'password';
-                    passwordInput.value = '2020';
-                    
-                    form.appendChild(passwordInput);
-                    document.body.appendChild(form);
-                    form.submit();
-                }
             });
         });
 
