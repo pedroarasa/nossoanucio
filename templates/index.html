@@ -607,11 +607,12 @@
                         <i class="fas fa-images"></i>
                         <p>Escolha até 10 imagens</p>
                         <small class="text-muted">Clique ou arraste os arquivos aqui</small>
+                        <small class="text-muted d-block">Suporta fotos de celular</small>
                         <div class="file-info mt-2">
-                            <span id="fileCount">0 arquivos selecionado(s)</span>
+                            <span id="fileCount">0 arquivos selecionados</span>
                         </div>
                     </div>
-                    <input type="file" id="imageInput" name="images" accept="image/*" multiple style="display: none;">
+                    <input type="file" id="imageInput" name="images" accept="image/*" capture="environment" multiple style="display: none;">
                     <div class="selected-files mt-3" id="selectedFiles"></div>
                     <div class="mt-3">
                         <label class="form-label">Selecione a imagem principal:</label>
@@ -782,6 +783,35 @@
         const mainImageSelect = document.getElementById('mainImageSelect');
         const MAX_FILES = 10;
 
+        // Função para corrigir a orientação da imagem
+        function fixImageOrientation(file, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Verifica a orientação da imagem
+                    const width = img.width;
+                    const height = img.height;
+                    
+                    // Ajusta o tamanho do canvas
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    // Desenha a imagem no canvas
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // Converte para base64
+                    const dataURL = canvas.toDataURL(file.type);
+                    callback(dataURL);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
         fileInput.addEventListener('change', function() {
             selectedFiles.innerHTML = '';
             mainImageSelect.innerHTML = '<option value="">Selecione uma imagem principal</option>';
@@ -798,12 +828,11 @@
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
+                    fixImageOrientation(file, function(dataURL) {
                         const preview = document.createElement('div');
                         preview.className = 'file-preview';
                         preview.innerHTML = `
-                            <img src="${e.target.result}" alt="${file.name}">
+                            <img src="${dataURL}" alt="${file.name}">
                             <div class="remove-file" onclick="removeFile(${i})">
                                 <i class="fas fa-times"></i>
                             </div>
@@ -815,8 +844,7 @@
                         option.value = i;
                         option.textContent = `Imagem ${i + 1}`;
                         mainImageSelect.appendChild(option);
-                    };
-                    reader.readAsDataURL(file);
+                    });
                 }
             }
         });

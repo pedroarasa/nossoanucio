@@ -5,6 +5,8 @@ import os
 from datetime import datetime
 import base64
 from io import BytesIO
+from PIL import Image as PILImage
+import io
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui'
@@ -88,7 +90,7 @@ def upload():
     
     # Criar o registro principal
     main_image = files[main_image_index]
-    main_image_data = main_image.read()
+    main_image_data = process_image(main_image)
     main_image_type = main_image.content_type
     
     new_image = Image(
@@ -104,7 +106,7 @@ def upload():
     # Adicionar imagens adicionais
     for i, file in enumerate(files):
         if i != main_image_index:
-            image_data = file.read()
+            image_data = process_image(file)
             image_type = file.content_type
             
             new_additional_image = AdditionalImage(
@@ -117,6 +119,29 @@ def upload():
     db.session.commit()
     flash('Imagens enviadas com sucesso!')
     return redirect(url_for('index'))
+
+def process_image(file):
+    # Ler a imagem
+    img = PILImage.open(file)
+    
+    # Corrigir a orientação da imagem
+    if hasattr(img, '_getexif'):
+        exif = img._getexif()
+        if exif is not None:
+            orientation = exif.get(274)  # 274 é o código EXIF para orientação
+            if orientation == 3:
+                img = img.rotate(180, expand=True)
+            elif orientation == 6:
+                img = img.rotate(270, expand=True)
+            elif orientation == 8:
+                img = img.rotate(90, expand=True)
+    
+    # Converter para bytes
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format=img.format or 'JPEG')
+    img_byte_arr = img_byte_arr.getvalue()
+    
+    return img_byte_arr
 
 @app.route('/add_images', methods=['POST'])
 def add_images():
@@ -142,7 +167,7 @@ def add_images():
     
     for file in files:
         if file:
-            image_data = file.read()
+            image_data = process_image(file)
             image_type = file.content_type
             
             new_additional_image = AdditionalImage(
