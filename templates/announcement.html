@@ -88,10 +88,15 @@
                         </p>
                         
                         {% if current_user.is_authenticated and current_user.id == announcement.user_id %}
-                            <div class="mt-4">
+                            <div class="mt-4 d-flex gap-2">
                                 <a href="{{ url_for('edit_announcement', announcement_id=announcement.id) }}" class="btn btn-primary">
                                     <i class="fas fa-edit"></i> Editar Anúncio
                                 </a>
+                                <button class="btn {% if announcement.is_available %}btn-success{% else %}btn-warning{% endif %}" 
+                                        onclick="toggleAvailability({{ announcement.id }})">
+                                    <i class="fas {% if announcement.is_available %}fa-check{% else %}fa-times{% endif %}"></i>
+                                    {% if announcement.is_available %}Disponível{% else %}Indisponível{% endif %}
+                                </button>
                             </div>
                         {% endif %}
                     </div>
@@ -230,6 +235,36 @@
                 if (data.success) {
                     document.querySelector('.likes-count').textContent = data.likes;
                     document.querySelector('.dislikes-count').textContent = data.dislikes;
+                }
+            })
+            .catch(error => console.error('Erro:', error));
+        }
+
+        function toggleAvailability(announcementId) {
+            if (!{{ current_user.is_authenticated|tojson }}) {
+                alert('Você precisa estar logado para alterar a disponibilidade');
+                return;
+            }
+
+            fetch(`/toggle_availability/${announcementId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const button = document.querySelector(`button[onclick="toggleAvailability(${announcementId})"]`);
+                    if (data.is_available) {
+                        button.className = 'btn btn-success';
+                        button.innerHTML = '<i class="fas fa-check"></i> Disponível';
+                    } else {
+                        button.className = 'btn btn-warning';
+                        button.innerHTML = '<i class="fas fa-times"></i> Indisponível';
+                    }
+                } else {
+                    alert(data.message);
                 }
             })
             .catch(error => console.error('Erro:', error));

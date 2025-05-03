@@ -51,6 +51,7 @@ class Announcement(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     images = db.relationship('Image', backref='announcement', lazy=True, cascade="all, delete-orphan")
     is_active = db.Column(db.Boolean, default=True)
+    is_available = db.Column(db.Boolean, default=True)
 
 class Image(db.Model):
     __tablename__ = 'images'
@@ -321,6 +322,29 @@ def edit_announcement(announcement_id):
             flash(f'Erro ao atualizar anúncio: {str(e)}')
     
     return render_template('edit.html', announcement=announcement)
+
+@app.route('/toggle_availability/<int:announcement_id>', methods=['POST'])
+def toggle_availability(announcement_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Faça login para alterar a disponibilidade'}), 401
+    
+    announcement = Announcement.query.get_or_404(announcement_id)
+    
+    # Verificar se o usuário é o dono do anúncio
+    if announcement.user_id != session['user_id'] and not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Você não tem permissão para alterar este anúncio'}), 403
+    
+    try:
+        announcement.is_available = not announcement.is_available
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Status de disponibilidade atualizado',
+            'is_available': announcement.is_available
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 def process_image(file):
     try:

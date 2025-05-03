@@ -71,6 +71,16 @@
         .navbar {
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
+        .unavailable-tag {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -134,6 +144,11 @@
                         <div class="price-tag">
                             R$ {{ "%.2f"|format(announcement.price) }}
                         </div>
+                        {% if not announcement.is_available %}
+                            <div class="unavailable-tag">
+                                <i class="fas fa-times"></i> Indisponível
+                            </div>
+                        {% endif %}
                         <div class="card-body">
                             <h5 class="card-title">{{ announcement.title }}</h5>
                             <p class="card-text text-primary fw-bold">R$ {{ "%.2f"|format(announcement.price) }}</p>
