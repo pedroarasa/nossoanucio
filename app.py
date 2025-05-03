@@ -347,6 +347,37 @@ def toggle_availability(announcement_id):
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@app.route('/admin/secret', methods=['GET', 'POST'])
+def admin_secret():
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password == '41313769p':
+            session['is_admin'] = True
+            flash('Acesso concedido!')
+            return redirect(url_for('admin_secret'))
+        else:
+            flash('Senha incorreta!')
+    
+    # Se não estiver autenticado, mostrar o formulário de senha
+    if not session.get('is_admin'):
+        return render_template('admin_login.html')
+    
+    # Se estiver autenticado, mostrar a lista de anúncios
+    announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
+    return render_template('admin_panel.html', announcements=announcements)
+
+@app.route('/admin/delete/<int:announcement_id>', methods=['POST'])
+def admin_delete(announcement_id):
+    if not session.get('is_admin'):
+        flash('Acesso negado!')
+        return redirect(url_for('index'))
+    
+    announcement = Announcement.query.get_or_404(announcement_id)
+    db.session.delete(announcement)
+    db.session.commit()
+    flash('Anúncio deletado com sucesso!')
+    return redirect(url_for('admin_secret'))
+
 def process_image(file):
     try:
         # Lista de formatos de imagem suportados
