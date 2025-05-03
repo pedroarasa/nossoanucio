@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 from datetime import datetime
 import base64
@@ -15,6 +16,22 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
 db = SQLAlchemy(app)
 
+class User(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    images = db.relationship('Image', backref='owner', lazy=True)
+    reactions = db.relationship('Reaction', backref='user', lazy=True)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
 class Image(db.Model):
     __tablename__ = 'image'
     id = db.Column(db.Integer, primary_key=True)
@@ -23,10 +40,10 @@ class Image(db.Model):
     description = db.Column(db.Text)
     image_data = db.Column(db.LargeBinary, nullable=False)
     image_type = db.Column(db.String(20), nullable=False)
-    likes = db.Column(db.Integer, default=0)
-    dislikes = db.Column(db.Integer, default=0)
     upload_date = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     additional_images = db.relationship('AdditionalImage', backref='main_image', lazy=True, cascade="all, delete-orphan")
+    reactions = db.relationship('Reaction', backref='image', lazy=True)
 
     def __repr__(self):
         return f'<Image {self.name}>'
@@ -42,11 +59,64 @@ class AdditionalImage(db.Model):
     def __repr__(self):
         return f'<AdditionalImage {self.id}>'
 
+class Reaction(db.Model):
+    __tablename__ = 'reactions'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    image_id = db.Column(db.Integer, db.ForeignKey('image.id'), nullable=False)
+    is_like = db.Column(db.Boolean, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 with app.app_context():
     db.create_all()
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        user = User.query.filter_by(email=email).first()
+        
+        if user and user.check_password(password):
+            session['user_id'] = user.id
+            session['user_name'] = user.name
+            flash('Login realizado com sucesso!')
+            return redirect(url_for('index'))
+        else:
+            flash('Email ou senha incorretos')
+    return render_template('login.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        name = request.form.get('name')
+        password = request.form.get('password')
+        
+        if User.query.filter_by(email=email).first():
+            flash('Email já cadastrado')
+            return redirect(url_for('register'))
+        
+        user = User(email=email, name=name)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        
+        flash('Cadastro realizado com sucesso!')
+        return redirect(url_for('login'))
+    return render_template('register.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('Logout realizado com sucesso!')
+    return redirect(url_for('login'))
+
 @app.route('/')
 def index():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
     images = Image.query.order_by(Image.upload_date.desc()).all()
     return render_template('index.html', images=images)
 
@@ -70,6 +140,9 @@ def get_additional_image(image_id, index):
 
 @app.route('/upload', methods=['POST'])
 def upload():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
     if 'images' not in request.files:
         flash('Nenhum arquivo selecionado')
         return redirect(url_for('index'))
@@ -98,7 +171,8 @@ def upload():
         phone=request.form['phone'],
         description=request.form['description'],
         image_data=main_image_data,
-        image_type=main_image_type
+        image_type=main_image_type,
+        user_id=session['user_id']
     )
     db.session.add(new_image)
     db.session.commit()
@@ -183,17 +257,53 @@ def add_images():
 
 @app.route('/like/<int:image_id>', methods=['POST'])
 def like(image_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Usuário não logado'}), 401
+    
     image = Image.query.get_or_404(image_id)
-    image.likes += 1
+    user_id = session['user_id']
+    
+    # Verifica se já existe uma reação
+    reaction = Reaction.query.filter_by(user_id=user_id, image_id=image_id).first()
+    
+    if reaction:
+        if reaction.is_like:
+            return jsonify({'error': 'Você já curtiu esta imagem'}), 400
+        reaction.is_like = True
+    else:
+        reaction = Reaction(user_id=user_id, image_id=image_id, is_like=True)
+        db.session.add(reaction)
+    
     db.session.commit()
-    return jsonify({'likes': image.likes})
+    return jsonify({
+        'likes': Reaction.query.filter_by(image_id=image_id, is_like=True).count(),
+        'dislikes': Reaction.query.filter_by(image_id=image_id, is_like=False).count()
+    })
 
 @app.route('/dislike/<int:image_id>', methods=['POST'])
 def dislike(image_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Usuário não logado'}), 401
+    
     image = Image.query.get_or_404(image_id)
-    image.dislikes += 1
+    user_id = session['user_id']
+    
+    # Verifica se já existe uma reação
+    reaction = Reaction.query.filter_by(user_id=user_id, image_id=image_id).first()
+    
+    if reaction:
+        if not reaction.is_like:
+            return jsonify({'error': 'Você já não curtiu esta imagem'}), 400
+        reaction.is_like = False
+    else:
+        reaction = Reaction(user_id=user_id, image_id=image_id, is_like=False)
+        db.session.add(reaction)
+    
     db.session.commit()
-    return jsonify({'dislikes': image.dislikes})
+    return jsonify({
+        'likes': Reaction.query.filter_by(image_id=image_id, is_like=True).count(),
+        'dislikes': Reaction.query.filter_by(image_id=image_id, is_like=False).count()
+    })
 
 @app.route('/delete/<int:image_id>', methods=['POST'])
 def delete_image(image_id):
