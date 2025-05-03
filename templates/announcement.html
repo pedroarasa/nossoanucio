@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ announcement.title }} - Detalhes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .main-image {
+            height: 400px;
+            object-fit: cover;
+        }
+        .thumbnail {
+            height: 100px;
+            object-fit: cover;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        .thumbnail:hover {
+            opacity: 1;
+        }
+        .thumbnail.active {
+            opacity: 1;
+            border: 2px solid #0d6efd;
+        }
+        .price-tag {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #198754;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">Anúncios</a>
+            <div class="navbar-nav ms-auto">
+                {% if session.get('user_id') %}
+                    <a class="nav-link" href="{{ url_for('upload') }}">
+                        <i class="fas fa-plus"></i> Novo Anúncio
+                    </a>
+                    <a class="nav-link" href="{{ url_for('logout') }}">
+                        <i class="fas fa-sign-out-alt"></i> Sair
+                    </a>
+                {% else %}
+                    <a class="nav-link" href="{{ url_for('login') }}">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </a>
+                    <a class="nav-link" href="{{ url_for('register') }}">
+                        <i class="fas fa-user-plus"></i> Cadastrar
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h1 class="card-title">{{ announcement.title }}</h1>
+                        <div class="price-tag mb-3">
+                            R$ {{ "%.2f"|format(announcement.price) }}
+                        </div>
+                        <p class="card-text">{{ announcement.description }}</p>
+                        <p class="card-text">
+                            <i class="fas fa-map-marker-alt"></i> {{ announcement.location }}
+                        </p>
+                        <p class="card-text">
+                            <i class="fas fa-tag"></i> {{ announcement.category }}
+                        </p>
+                        <p class="card-text">
+                            <small class="text-muted">
+                                Publicado em {{ announcement.created_at.strftime('%d/%m/%Y') }}
+                            </small>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Imagens</h5>
+                        {% if announcement.images %}
+                            <div class="row mb-3">
+                                <div class="col-12">
+                                    <img id="mainImage" 
+                                         src="{{ url_for('get_image', image_id=announcement.images[0].id) }}" 
+                                         class="img-fluid main-image" 
+                                         alt="{{ announcement.title }}">
+                                </div>
+                            </div>
+                            <div class="row">
+                                {% for image in announcement.images %}
+                                    <div class="col-3 mb-3">
+                                        <img src="{{ url_for('get_image', image_id=image.id) }}" 
+                                             class="img-fluid thumbnail {% if loop.first %}active{% endif %}"
+                                             alt="Imagem {{ loop.index }}"
+                                             onclick="changeMainImage(this, '{{ url_for('get_image', image_id=image.id) }}')">
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                Nenhuma imagem disponível.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Contato</h5>
+                        <p class="card-text">
+                            <i class="fas fa-user"></i> {{ announcement.owner.name }}
+                        </p>
+                        {% if announcement.owner.phone %}
+                            <p class="card-text">
+                                <i class="fas fa-phone"></i> 
+                                <a href="tel:{{ announcement.owner.phone }}" class="text-decoration-none">
+                                    {{ announcement.owner.phone }}
+                                </a>
+                            </p>
+                        {% endif %}
+                        <a href="https://wa.me/55{{ announcement.owner.phone }}" 
+                           class="btn btn-success w-100 mb-2" 
+                           target="_blank">
+                            <i class="fab fa-whatsapp"></i> WhatsApp
+                        </a>
+                        <a href="tel:{{ announcement.owner.phone }}" 
+                           class="btn btn-primary w-100">
+                            <i class="fas fa-phone"></i> Ligar
+                        </a>
+                    </div>
+                </div>
+
+                {% if session.get('user_id') == announcement.user_id or session.get('is_admin') %}
+                    <div class="card mt-4">
+                        <div class="card-body">
+                            <h5 class="card-title">Ações</h5>
+                            <button class="btn btn-danger w-100 delete-btn" 
+                                    data-announcement-id="{{ announcement.id }}"
+                                    data-bs-toggle="modal" 
+                                    data-bs-target="#deleteModal">
+                                <i class="fas fa-trash"></i> Excluir Anúncio
+                            </button>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação de Exclusão -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmar Exclusão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Tem certeza que deseja excluir este anúncio?</p>
+                    <form id="deleteForm" method="POST">
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Senha de Administração</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" form="deleteForm" class="btn btn-danger">Excluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function changeMainImage(thumbnail, imageUrl) {
+            document.getElementById('mainImage').src = imageUrl;
+            document.querySelectorAll('.thumbnail').forEach(img => img.classList.remove('active'));
+            thumbnail.classList.add('active');
+        }
+
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const announcementId = this.dataset.announcementId;
+                const form = document.getElementById('deleteForm');
+                form.action = `/delete/${announcementId}`;
+            });
+        });
+    </script>
+</body>
+</html> 

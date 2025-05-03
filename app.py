@@ -22,9 +22,10 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    images = db.relationship('Image', backref='owner', lazy=True)
-    reactions = db.relationship('Reaction', backref='user', lazy=True)
+    is_admin = db.Column(db.Boolean, default=False)
+    announcements = db.relationship('Announcement', backref='owner', lazy=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -32,44 +33,40 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-class Image(db.Model):
-    __tablename__ = 'image'
+class Announcement(db.Model):
+    __tablename__ = 'announcements'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    phone = db.Column(db.String(20), nullable=False)
+    title = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
+    price = db.Column(db.Float, nullable=False)
+    location = db.Column(db.String(200))
+    category = db.Column(db.String(50))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    images = db.relationship('Image', backref='announcement', lazy=True, cascade="all, delete-orphan")
+    is_active = db.Column(db.Boolean, default=True)
+
+class Image(db.Model):
+    __tablename__ = 'images'
+    id = db.Column(db.Integer, primary_key=True)
     image_data = db.Column(db.LargeBinary, nullable=False)
     image_type = db.Column(db.String(20), nullable=False)
-    upload_date = db.Column(db.DateTime, default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    additional_images = db.relationship('AdditionalImage', backref='main_image', lazy=True, cascade="all, delete-orphan")
-    reactions = db.relationship('Reaction', backref='image', lazy=True)
-    is_public = db.Column(db.Boolean, default=False)
-
-    def __repr__(self):
-        return f'<Image {self.name}>'
-
-class AdditionalImage(db.Model):
-    __tablename__ = 'additional_images'
-    id = db.Column(db.Integer, primary_key=True)
-    main_image_id = db.Column(db.Integer, db.ForeignKey('image.id'), nullable=False)
-    image_data = db.Column(db.LargeBinary, nullable=False)
-    image_type = db.Column(db.String(20), nullable=False)
-    upload_date = db.Column(db.DateTime, default=datetime.utcnow)
-
-    def __repr__(self):
-        return f'<AdditionalImage {self.id}>'
-
-class Reaction(db.Model):
-    __tablename__ = 'reactions'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    image_id = db.Column(db.Integer, db.ForeignKey('image.id'), nullable=False)
-    is_like = db.Column(db.Boolean, nullable=False)
+    is_main = db.Column(db.Boolean, default=False)
+    announcement_id = db.Column(db.Integer, db.ForeignKey('announcements.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
     db.create_all()
+
+@app.route('/')
+def index():
+    announcements = Announcement.query.filter_by(is_active=True).order_by(Announcement.created_at.desc()).all()
+    return render_template('index.html', announcements=announcements)
+
+@app.route('/announcement/<int:announcement_id>')
+def view_announcement(announcement_id):
+    announcement = Announcement.query.get_or_404(announcement_id)
+    return render_template('announcement.html', announcement=announcement)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -81,6 +78,7 @@ def login():
         if user and user.check_password(password):
             session['user_id'] = user.id
             session['user_name'] = user.name
+            session['is_admin'] = user.is_admin
             flash('Login realizado com sucesso!')
             return redirect(url_for('index'))
         else:
@@ -93,12 +91,13 @@ def register():
         email = request.form.get('email')
         name = request.form.get('name')
         password = request.form.get('password')
+        phone = request.form.get('phone')
         
         if User.query.filter_by(email=email).first():
             flash('Email já cadastrado')
             return redirect(url_for('register'))
         
-        user = User(email=email, name=name)
+        user = User(email=email, name=name, phone=phone)
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
@@ -111,14 +110,63 @@ def register():
 def logout():
     session.clear()
     flash('Logout realizado com sucesso!')
-    return redirect(url_for('login'))
+    return redirect(url_for('index'))
 
-@app.route('/')
-def index():
-    query = Image.query.filter_by(is_public=True).order_by(Image.upload_date.desc())
-    print(f"SQL Query: {query}")
-    images = query.all()
-    return render_template('index.html', images=images)
+@app.route('/upload', methods=['GET', 'POST'])
+def upload():
+    if 'user_id' not in session:
+        flash('Faça login antes de criar um anúncio')
+        return redirect(url_for('login'))
+    
+    if request.method == 'GET':
+        return render_template('upload.html')
+    
+    if 'images' not in request.files:
+        flash('Nenhuma imagem selecionada')
+        return redirect(url_for('upload'))
+    
+    files = request.files.getlist('images')
+    if not files or files[0].filename == '':
+        flash('Nenhuma imagem selecionada')
+        return redirect(url_for('upload'))
+    
+    if len(files) > 7:
+        flash('Você pode adicionar no máximo 7 imagens')
+        return redirect(url_for('upload'))
+    
+    try:
+        # Criar o anúncio
+        announcement = Announcement(
+            title=request.form['title'],
+            description=request.form['description'],
+            price=float(request.form['price']),
+            location=request.form['location'],
+            category=request.form['category'],
+            user_id=session['user_id']
+        )
+        db.session.add(announcement)
+        db.session.commit()
+        
+        # Adicionar as imagens
+        for i, file in enumerate(files):
+            image_data = process_image(file)
+            image_type = file.content_type
+            
+            new_image = Image(
+                image_data=image_data,
+                image_type=image_type,
+                is_main=(i == 0),  # Primeira imagem é a principal
+                announcement_id=announcement.id
+            )
+            db.session.add(new_image)
+        
+        db.session.commit()
+        flash('Anúncio criado com sucesso!')
+        return redirect(url_for('index'))
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao criar anúncio: {str(e)}')
+        return redirect(url_for('upload'))
 
 @app.route('/image/<int:image_id>')
 def get_image(image_id):
@@ -129,68 +177,39 @@ def get_image(image_id):
         as_attachment=False
     )
 
-@app.route('/additional_image/<int:image_id>/<int:index>')
-def get_additional_image(image_id, index):
-    additional_image = AdditionalImage.query.filter_by(main_image_id=image_id).offset(index).first_or_404()
-    return send_file(
-        BytesIO(additional_image.image_data),
-        mimetype=additional_image.image_type,
-        as_attachment=False
-    )
-
-@app.route('/upload', methods=['GET', 'POST'])
-def upload():
-    if 'user_id' not in session:
-        flash('Faça login antes de fazer upload de imagens')
-        return redirect(url_for('login'))
+@app.route('/delete/<int:announcement_id>', methods=['POST'])
+def delete_announcement(announcement_id):
+    announcement = Announcement.query.get_or_404(announcement_id)
+    password = request.form.get('password')
     
-    if request.method == 'GET':
-        return render_template('upload.html')
-    
-    if 'images' not in request.files:
-        flash('Nenhum arquivo selecionado')
-        return redirect(url_for('upload'))
-    
-    file = request.files['images']
-    if file.filename == '':
-        flash('Nenhum arquivo selecionado')
-        return redirect(url_for('upload'))
-    
-    try:
-        # Processar a imagem
-        image_data = process_image(file)
-        image_type = file.content_type
-        
-        # Criar o registro da imagem
-        new_image = Image(
-            name=request.form['name'],
-            phone=request.form['phone'],
-            description=request.form['description'],
-            image_data=image_data,
-            image_type=image_type,
-            user_id=session['user_id'],
-            is_public=True
-        )
-        
-        db.session.add(new_image)
+    if password == '2020' or (session.get('user_id') == announcement.user_id):
+        db.session.delete(announcement)
         db.session.commit()
-        
-        flash('Imagem enviada com sucesso!')
-        return redirect(url_for('index'))
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Erro ao fazer upload: {str(e)}')
-        return redirect(url_for('upload'))
+        flash('Anúncio deletado com sucesso!')
+    else:
+        flash('Senha incorreta ou você não tem permissão para deletar este anúncio')
+    
+    return redirect(url_for('index'))
+
+@app.route('/search')
+def search():
+    query = request.args.get('q', '')
+    announcements = Announcement.query.filter(
+        (Announcement.title.contains(query)) | 
+        (Announcement.description.contains(query)) |
+        (Announcement.location.contains(query)) |
+        (Announcement.category.contains(query))
+    ).filter_by(is_active=True).all()
+    return render_template('index.html', announcements=announcements, query=query)
 
 def process_image(file):
-    # Ler a imagem
     img = PILImage.open(file)
     
     # Corrigir a orientação da imagem
     if hasattr(img, '_getexif'):
         exif = img._getexif()
         if exif is not None:
-            orientation = exif.get(274)  # 274 é o código EXIF para orientação
+            orientation = exif.get(274)
             if orientation == 3:
                 img = img.rotate(180, expand=True)
             elif orientation == 6:
@@ -204,115 +223,6 @@ def process_image(file):
     img_byte_arr = img_byte_arr.getvalue()
     
     return img_byte_arr
-
-@app.route('/add_images', methods=['POST'])
-def add_images():
-    image_id = request.form.get('image_id')
-    if not image_id:
-        flash('Selecione uma imagem principal')
-        return redirect(url_for('index'))
-    
-    main_image = Image.query.get_or_404(image_id)
-    
-    if 'additional_images' not in request.files:
-        flash('Nenhum arquivo selecionado')
-        return redirect(url_for('index'))
-    
-    files = request.files.getlist('additional_images')
-    if not files or files[0].filename == '':
-        flash('Nenhum arquivo selecionado')
-        return redirect(url_for('index'))
-    
-    if len(files) > 10:
-        flash('Você pode adicionar no máximo 10 imagens extras')
-        return redirect(url_for('index'))
-    
-    for file in files:
-        if file:
-            image_data = process_image(file)
-            image_type = file.content_type
-            
-            new_additional_image = AdditionalImage(
-                main_image_id=image_id,
-                image_data=image_data,
-                image_type=image_type
-            )
-            db.session.add(new_additional_image)
-    
-    db.session.commit()
-    flash('Imagens extras adicionadas com sucesso!')
-    return redirect(url_for('index'))
-
-@app.route('/like/<int:image_id>', methods=['POST'])
-def like(image_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'Você precisa estar logado para reagir'}), 401
-    
-    image = Image.query.get_or_404(image_id)
-    user_id = session['user_id']
-    
-    # Verifica se já existe uma reação
-    reaction = Reaction.query.filter_by(user_id=user_id, image_id=image_id).first()
-    
-    if reaction:
-        if reaction.is_like:
-            return jsonify({'error': 'Você já curtiu esta imagem'}), 400
-        reaction.is_like = True
-    else:
-        reaction = Reaction(user_id=user_id, image_id=image_id, is_like=True)
-        db.session.add(reaction)
-    
-    db.session.commit()
-    return jsonify({
-        'likes': Reaction.query.filter_by(image_id=image_id, is_like=True).count(),
-        'dislikes': Reaction.query.filter_by(image_id=image_id, is_like=False).count()
-    })
-
-@app.route('/dislike/<int:image_id>', methods=['POST'])
-def dislike(image_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'Você precisa estar logado para reagir'}), 401
-    
-    image = Image.query.get_or_404(image_id)
-    user_id = session['user_id']
-    
-    # Verifica se já existe uma reação
-    reaction = Reaction.query.filter_by(user_id=user_id, image_id=image_id).first()
-    
-    if reaction:
-        if not reaction.is_like:
-            return jsonify({'error': 'Você já não curtiu esta imagem'}), 400
-        reaction.is_like = False
-    else:
-        reaction = Reaction(user_id=user_id, image_id=image_id, is_like=False)
-        db.session.add(reaction)
-    
-    db.session.commit()
-    return jsonify({
-        'likes': Reaction.query.filter_by(image_id=image_id, is_like=True).count(),
-        'dislikes': Reaction.query.filter_by(image_id=image_id, is_like=False).count()
-    })
-
-@app.route('/delete/<int:image_id>', methods=['POST'])
-def delete_image(image_id):
-    password = request.form.get('password')
-    if password == '2121':
-        image = Image.query.get_or_404(image_id)
-        db.session.delete(image)
-        db.session.commit()
-        flash('Imagem deletada com sucesso!')
-    else:
-        flash('Senha incorreta!')
-    return redirect(url_for('index'))
-
-@app.route('/search')
-def search():
-    query = request.args.get('q', '')
-    images = Image.query.filter(
-        (Image.name.contains(query)) | 
-        (Image.description.contains(query))
-    ).all()
-    return render_template('index.html', images=images, query=query)
 
 if __name__ == '__main__':
     app.run(debug=True) 
