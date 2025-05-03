@@ -590,24 +590,16 @@
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-custom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-camera-retro"></i> Galeria 2025
-            </a>
-            <div class="ms-auto d-flex align-items-center">
-                <div class="date-time me-3">
-                    <i class="fas fa-calendar-alt"></i> <span id="current-date"></span>
-                    <i class="fas fa-clock ms-2"></i> <span id="current-time"></span>
-                </div>
-                <div class="user-info">
-                    <span class="me-2">
-                        <i class="fas fa-user"></i> {{ session['user_name'] }}
-                    </span>
-                    <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-danger">
-                        <i class="fas fa-sign-out-alt"></i> Sair
-                    </a>
-                </div>
+            <a class="navbar-brand" href="{{ url_for('index') }}">Galeria de Imagens</a>
+            <div class="navbar-nav ms-auto">
+                {% if session.get('user_id') %}
+                    <a class="nav-link" href="{{ url_for('upload') }}">Upload</a>
+                    <a class="nav-link" href="{{ url_for('logout') }}">Sair</a>
+                {% else %}
+                    <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                {% endif %}
             </div>
         </div>
     </nav>

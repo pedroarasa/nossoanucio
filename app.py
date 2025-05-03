@@ -44,6 +44,7 @@ class Image(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     additional_images = db.relationship('AdditionalImage', backref='main_image', lazy=True, cascade="all, delete-orphan")
     reactions = db.relationship('Reaction', backref='image', lazy=True)
+    is_public = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
         return f'<Image {self.name}>'
@@ -114,10 +115,7 @@ def logout():
 
 @app.route('/')
 def index():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    images = Image.query.order_by(Image.upload_date.desc()).all()
+    images = Image.query.filter_by(is_public=True).order_by(Image.upload_date.desc()).all()
     return render_template('index.html', images=images)
 
 @app.route('/image/<int:image_id>')
@@ -138,28 +136,32 @@ def get_additional_image(image_id, index):
         as_attachment=False
     )
 
-@app.route('/upload', methods=['POST'])
+@app.route('/upload', methods=['GET', 'POST'])
 def upload():
     if 'user_id' not in session:
+        flash('Você precisa estar logado para fazer upload de imagens')
         return redirect(url_for('login'))
+    
+    if request.method == 'GET':
+        return render_template('upload.html')
     
     if 'images' not in request.files:
         flash('Nenhum arquivo selecionado')
-        return redirect(url_for('index'))
+        return redirect(url_for('upload'))
     
     files = request.files.getlist('images')
     if not files or files[0].filename == '':
         flash('Nenhum arquivo selecionado')
-        return redirect(url_for('index'))
+        return redirect(url_for('upload'))
     
     if len(files) > 10:
         flash('Você pode adicionar no máximo 10 imagens')
-        return redirect(url_for('index'))
+        return redirect(url_for('upload'))
     
     main_image_index = int(request.form.get('main_image_index', 0))
     if main_image_index >= len(files):
         flash('Índice da imagem principal inválido')
-        return redirect(url_for('index'))
+        return redirect(url_for('upload'))
     
     # Criar o registro principal
     main_image = files[main_image_index]
@@ -172,7 +174,8 @@ def upload():
         description=request.form['description'],
         image_data=main_image_data,
         image_type=main_image_type,
-        user_id=session['user_id']
+        user_id=session['user_id'],
+        is_public=True
     )
     db.session.add(new_image)
     db.session.commit()
@@ -258,7 +261,7 @@ def add_images():
 @app.route('/like/<int:image_id>', methods=['POST'])
 def like(image_id):
     if 'user_id' not in session:
-        return jsonify({'error': 'Usuário não logado'}), 401
+        return jsonify({'error': 'Você precisa estar logado para reagir'}), 401
     
     image = Image.query.get_or_404(image_id)
     user_id = session['user_id']
@@ -283,7 +286,7 @@ def like(image_id):
 @app.route('/dislike/<int:image_id>', methods=['POST'])
 def dislike(image_id):
     if 'user_id' not in session:
-        return jsonify({'error': 'Usuário não logado'}), 401
+        return jsonify({'error': 'Você precisa estar logado para reagir'}), 401
     
     image = Image.query.get_or_404(image_id)
     user_id = session['user_id']
