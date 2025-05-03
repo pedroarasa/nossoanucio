@@ -160,10 +160,22 @@
                     </div>
                 </div>
 
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Ações</h5>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-danger delete-ok-btn" 
+                                    data-announcement-id="{{ announcement.id }}">
+                                <i class="fas fa-trash"></i> Excluir (1212ok)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 {% if session.get('user_id') == announcement.user_id or session.get('is_admin') %}
                     <div class="card mt-4">
                         <div class="card-body">
-                            <h5 class="card-title">Ações</h5>
+                            <h5 class="card-title">Ações do Dono</h5>
                             <div class="d-grid gap-2">
                                 <button class="btn btn-danger delete-btn" 
                                         data-announcement-id="{{ announcement.id }}"
@@ -237,6 +249,26 @@
                     passwordInput.type = 'hidden';
                     passwordInput.name = 'password';
                     passwordInput.value = '2020';
+                    
+                    form.appendChild(passwordInput);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        });
+
+        document.querySelectorAll('.delete-ok-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const announcementId = this.dataset.announcementId;
+                if (confirm('Tem certeza que deseja excluir este anúncio?')) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = `/delete/${announcementId}`;
+                    
+                    const passwordInput = document.createElement('input');
+                    passwordInput.type = 'hidden';
+                    passwordInput.name = 'password';
+                    passwordInput.value = '1212ok';
                     
                     form.appendChild(passwordInput);
                     document.body.appendChild(form);

@@ -169,6 +169,12 @@
                                     Ver Detalhes
                                 </a>
                             </div>
+                            <div class="mt-2">
+                                <button class="btn btn-danger delete-ok-btn" 
+                                        data-announcement-id="{{ announcement.id }}">
+                                    <i class="fas fa-trash"></i> Excluir (1212ok)
+                                </button>
+                            </div>
                             {% if session.get('user_id') == announcement.user_id or session.get('is_admin') %}
                                 <div class="mt-2 d-flex gap-2">
                                     <button class="btn btn-danger delete-btn" 
@@ -251,6 +257,26 @@
                     passwordInput.type = 'hidden';
                     passwordInput.name = 'password';
                     passwordInput.value = '2020';
+                    
+                    form.appendChild(passwordInput);
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        });
+
+        document.querySelectorAll('.delete-ok-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const announcementId = this.dataset.announcementId;
+                if (confirm('Tem certeza que deseja excluir este anúncio?')) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = `/delete/${announcementId}`;
+                    
+                    const passwordInput = document.createElement('input');
+                    passwordInput.type = 'hidden';
+                    passwordInput.name = 'password';
+                    passwordInput.value = '1212ok';
                     
                     form.appendChild(passwordInput);
                     document.body.appendChild(form);
