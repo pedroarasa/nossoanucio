@@ -8,10 +8,16 @@ import base64
 from io import BytesIO
 from PIL import Image as PILImage
 import io
+import logging
+
+# Configurar logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://neondb_owner:npg_izJKD7Qm0kEh@ep-wandering-resonance-a9e1300q-pooler.gwc.azure.neon.tech/neondb?sslmode=require'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
 db = SQLAlchemy(app)
@@ -88,28 +94,35 @@ def login():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        email = request.form.get('email')
-        name = request.form.get('name')
-        password = request.form.get('password')
-        phone = request.form.get('phone')
-        
-        # Verificar se o email já existe
-        existing_user = User.query.filter(User.email == email).first()
-        if existing_user:
-            flash('Email já cadastrado')
-            return redirect(url_for('register'))
-        
         try:
+            email = request.form.get('email')
+            name = request.form.get('name')
+            password = request.form.get('password')
+            phone = request.form.get('phone')
+            
+            logger.debug(f'Tentativa de cadastro: {email}, {name}')
+            
+            # Verificar se o email já existe
+            existing_user = User.query.filter(User.email == email).first()
+            if existing_user:
+                flash('Email já cadastrado')
+                return redirect(url_for('register'))
+            
+            # Criar novo usuário
             user = User(email=email, name=name, phone=phone)
             user.set_password(password)
+            
             db.session.add(user)
             db.session.commit()
             
+            logger.debug(f'Usuário cadastrado com sucesso: {email}')
             flash('Cadastro realizado com sucesso!')
             return redirect(url_for('login'))
+            
         except Exception as e:
             db.session.rollback()
-            flash(f'Erro ao realizar cadastro: {str(e)}')
+            logger.error(f'Erro no cadastro: {str(e)}')
+            flash(f'Erro ao realizar cadastro. Por favor, tente novamente.')
             return redirect(url_for('register'))
     
     return render_template('register.html')
@@ -231,6 +244,12 @@ def process_image(file):
     img_byte_arr = img_byte_arr.getvalue()
     
     return img_byte_arr
+
+# Adicionar handler de erro
+@app.errorhandler(500)
+def internal_error(error):
+    logger.error(f'Erro interno do servidor: {error}')
+    return render_template('error.html', error=error), 500
 
 if __name__ == '__main__':
     app.run(debug=True) 
