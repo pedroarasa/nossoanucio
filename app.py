@@ -220,12 +220,13 @@ def delete_announcement(announcement_id):
     announcement = Announcement.query.get_or_404(announcement_id)
     password = request.form.get('password')
     
-    if password == '2020' or (session.get('user_id') == announcement.user_id):
+    # Verificar se é o dono do anúncio ou se tem a senha de administrador
+    if session.get('user_id') == announcement.user_id or password == '2020':
         db.session.delete(announcement)
         db.session.commit()
         flash('Anúncio deletado com sucesso!')
     else:
-        flash('Senha incorreta ou você não tem permissão para deletar este anúncio')
+        flash('Você não tem permissão para deletar este anúncio')
     
     return redirect(url_for('index'))
 

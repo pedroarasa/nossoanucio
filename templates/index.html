@@ -211,8 +211,9 @@
                     <p>Tem certeza que deseja excluir este anúncio?</p>
                     <form id="deleteForm" method="POST">
                         <div class="mb-3">
-                            <label for="password" class="form-label">Senha de Administração</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
+                            <label for="password" class="form-label">Senha de Administração (opcional)</label>
+                            <input type="password" class="form-control" id="password" name="password" placeholder="Digite a senha de administração se for um administrador">
+                            <small class="text-muted">Se você é o dono do anúncio, pode deixar em branco</small>
                         </div>
                     </form>
                 </div>
