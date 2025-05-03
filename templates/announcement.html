@@ -164,12 +164,14 @@
                     <div class="card mt-4">
                         <div class="card-body">
                             <h5 class="card-title">Ações</h5>
-                            <button class="btn btn-danger w-100 delete-btn" 
-                                    data-announcement-id="{{ announcement.id }}"
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#deleteModal">
-                                <i class="fas fa-trash"></i> Excluir Anúncio
-                            </button>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-danger delete-btn" 
+                                        data-announcement-id="{{ announcement.id }}"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#deleteModal">
+                                    <i class="fas fa-trash"></i> Excluir Anúncio
+                                </button>
+                            </div>
                         </div>
                     </div>
                 {% endif %}
