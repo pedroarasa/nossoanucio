@@ -93,17 +93,25 @@ def register():
         password = request.form.get('password')
         phone = request.form.get('phone')
         
-        if User.query.filter_by(email=email).first():
+        # Verificar se o email já existe
+        existing_user = User.query.filter(User.email == email).first()
+        if existing_user:
             flash('Email já cadastrado')
             return redirect(url_for('register'))
         
-        user = User(email=email, name=name, phone=phone)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
-        
-        flash('Cadastro realizado com sucesso!')
-        return redirect(url_for('login'))
+        try:
+            user = User(email=email, name=name, phone=phone)
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            
+            flash('Cadastro realizado com sucesso!')
+            return redirect(url_for('login'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao realizar cadastro: {str(e)}')
+            return redirect(url_for('register'))
+    
     return render_template('register.html')
 
 @app.route('/logout')
