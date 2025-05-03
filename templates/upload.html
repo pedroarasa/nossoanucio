@@ -153,6 +153,7 @@
         const mainImageIndex = document.getElementById('main_image_index');
         const fileError = document.getElementById('fileError');
         const submitBtn = document.getElementById('submitBtn');
+        const fileCount = document.getElementById('fileCount');
         let selectedImages = [];
 
         fileInput.addEventListener('change', function(e) {
@@ -173,6 +174,9 @@
                 return;
             }
 
+            // Atualiza o contador de arquivos
+            fileCount.textContent = `${this.files.length} arquivo(s) selecionado(s)`;
+
             Array.from(this.files).forEach((file, index) => {
                 if (!file.type.startsWith('image/')) {
                     fileError.textContent = 'Apenas arquivos de imagem são permitidos';
@@ -189,6 +193,12 @@
                         <button type="button" class="remove-btn" data-index="${index}">×</button>
                     `;
                     preview.appendChild(div);
+
+                    // Seleciona a primeira imagem como principal por padrão
+                    if (index === 0) {
+                        div.classList.add('selected');
+                        mainImageIndex.value = 0;
+                    }
 
                     div.addEventListener('click', function() {
                         document.querySelectorAll('.preview-item').forEach(item => {
@@ -211,25 +221,13 @@
             });
         });
 
-        // Validação do formulário antes de enviar
-        document.getElementById('uploadForm').addEventListener('submit', function(e) {
-            if (fileInput.files.length === 0) {
-                e.preventDefault();
-                fileError.textContent = 'Selecione pelo menos uma imagem';
-                fileError.style.display = 'block';
-                return;
-            }
-
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enviando...';
-        });
-
         function updateFileInput() {
             const dataTransfer = new DataTransfer();
             selectedImages.forEach(file => {
                 dataTransfer.items.add(file);
             });
             fileInput.files = dataTransfer.files;
+            fileCount.textContent = `${selectedImages.length} arquivo(s) selecionado(s)`;
         }
 
         function updatePreviews() {
@@ -264,6 +262,44 @@
                 reader.readAsDataURL(file);
             });
         }
+
+        // Validação do formulário antes de enviar
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            if (fileInput.files.length === 0) {
+                e.preventDefault();
+                fileError.textContent = 'Selecione pelo menos uma imagem';
+                fileError.style.display = 'block';
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enviando...';
+        });
+
+        // Suporte para arrastar e soltar arquivos
+        const dropZone = document.querySelector('.custom-file-upload');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.background = 'rgba(255, 255, 255, 0.9)';
+            dropZone.style.borderColor = 'var(--secondary-color)';
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.background = 'rgba(255, 255, 255, 0.5)';
+            dropZone.style.borderColor = 'var(--primary-color)';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.background = 'rgba(255, 255, 255, 0.5)';
+            dropZone.style.borderColor = 'var(--primary-color)';
+            
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                fileInput.dispatchEvent(new Event('change'));
+            }
+        });
     </script>
 </body>
 </html> 
