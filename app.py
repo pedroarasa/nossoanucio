@@ -61,6 +61,22 @@ class Image(db.Model):
     announcement_id = db.Column(db.Integer, db.ForeignKey('announcements.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class Like(db.Model):
+    __tablename__ = 'likes'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    announcement_id = db.Column(db.Integer, db.ForeignKey('announcements.id'), nullable=False)
+    is_like = db.Column(db.Boolean, nullable=False)  # True para like, False para dislike
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Garantir que um usuário só pode dar um like ou dislike por anúncio
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'announcement_id', name='unique_user_announcement'),
+    )
+
+    def __repr__(self):
+        return f'<Like {self.id}: User {self.user_id} {"liked" if self.is_like else "disliked"} Announcement {self.announcement_id}>'
+
 with app.app_context():
     db.create_all()
 
@@ -222,6 +238,89 @@ def search():
         (Announcement.category.contains(query))
     ).filter_by(is_active=True).all()
     return render_template('index.html', announcements=announcements, query=query)
+
+@app.route('/like/<int:announcement_id>/<int:is_like>', methods=['POST'])
+def like_announcement(announcement_id, is_like):
+    if 'user_id' not in session:
+        flash('Faça login para curtir/não curtir')
+        return redirect(url_for('login'))
+    
+    try:
+        # Verificar se já existe uma curtida do usuário
+        existing_like = Like.query.filter_by(
+            user_id=session['user_id'],
+            announcement_id=announcement_id
+        ).first()
+        
+        if existing_like:
+            # Se já existe, atualizar o status
+            existing_like.is_like = bool(is_like)
+        else:
+            # Se não existe, criar nova curtida
+            new_like = Like(
+                user_id=session['user_id'],
+                announcement_id=announcement_id,
+                is_like=bool(is_like)
+            )
+            db.session.add(new_like)
+        
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'Erro ao processar curtida: {str(e)}')
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/edit/<int:announcement_id>', methods=['GET', 'POST'])
+def edit_announcement(announcement_id):
+    if 'user_id' not in session:
+        flash('Faça login para editar anúncios')
+        return redirect(url_for('login'))
+    
+    announcement = Announcement.query.get_or_404(announcement_id)
+    
+    # Verificar se o usuário é o dono do anúncio
+    if announcement.user_id != session['user_id'] and not session.get('is_admin'):
+        flash('Você não tem permissão para editar este anúncio')
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        try:
+            announcement.title = request.form['title']
+            announcement.description = request.form['description']
+            announcement.price = float(request.form['price'])
+            announcement.location = request.form['location']
+            announcement.category = request.form['category']
+            
+            # Processar novas imagens
+            if 'images' in request.files:
+                files = request.files.getlist('images')
+                if files and files[0].filename != '':
+                    # Remover imagens antigas
+                    for image in announcement.images:
+                        db.session.delete(image)
+                    
+                    # Adicionar novas imagens
+                    for i, file in enumerate(files):
+                        image_data = process_image(file)
+                        image_type = file.content_type
+                        
+                        new_image = Image(
+                            image_data=image_data,
+                            image_type=image_type,
+                            is_main=(i == 0),
+                            announcement_id=announcement.id
+                        )
+                        db.session.add(new_image)
+            
+            db.session.commit()
+            flash('Anúncio atualizado com sucesso!')
+            return redirect(url_for('view_announcement', announcement_id=announcement.id))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao atualizar anúncio: {str(e)}')
+    
+    return render_template('edit.html', announcement=announcement)
 
 def process_image(file):
     try:
