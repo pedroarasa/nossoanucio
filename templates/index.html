@@ -3,589 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galeria de Imagens 2025</title>
+    <title>Galeria de Imagens</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
     <style>
-        :root {
-            --primary-color: #4a90e2;
-            --secondary-color: #2c3e50;
-            --accent-color: #e74c3c;
-        }
-
         body {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            min-height: 100vh;
-            padding-bottom: 80px; /* Espaço para o botão flutuante */
+            background: #f8f9fa;
         }
-
-        /* Estilos para telas grandes (desktop) */
-        @media (min-width: 992px) {
-            .container {
-                max-width: 1200px;
-            }
-            
-            .image-card {
-                margin-bottom: 30px;
-            }
-            
-            .image-container {
-                height: 300px;
-            }
+        .gallery-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
         }
-
-        /* Estilos para tablets */
-        @media (max-width: 991px) and (min-width: 768px) {
-            .container {
-                max-width: 95%;
-            }
-            
-            .image-container {
-                height: 250px;
-            }
-            
-            .btn-custom {
-                padding: 8px 16px;
-                font-size: 0.9rem;
-            }
-        }
-
-        /* Estilos para celulares */
-        @media (max-width: 767px) {
-            .container {
-                padding: 0 15px;
-            }
-            
-            .navbar-custom {
-                padding: 10px 0;
-            }
-            
-            .navbar-brand {
-                font-size: 1.2rem;
-            }
-            
-            .image-card {
-                margin-bottom: 20px;
-            }
-            
-            .image-container {
-                height: 200px;
-            }
-            
-            .image-info {
-                padding: 10px;
-            }
-            
-            .image-title {
-                font-size: 1rem;
-            }
-            
-            .btn-custom {
-                padding: 6px 12px;
-                font-size: 0.8rem;
-            }
-            
-            .search-bar {
-                padding: 10px;
-            }
-            
-            .upload-card {
-                margin-bottom: 15px;
-            }
-            
-            .floating-btn {
-                width: 50px;
-                height: 50px;
-                bottom: 20px;
-                right: 20px;
-            }
-            
-            .stats {
-                font-size: 0.8rem;
-            }
-            
-            .delete-form {
-                margin-top: 5px;
-            }
-            
-            .input-group input {
-                font-size: 0.9rem;
-            }
-        }
-
-        /* Estilos comuns para todos os dispositivos */
-        .navbar-custom {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
         .image-card {
-            transition: transform 0.3s ease;
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            width: 100%;
-        }
-
-        .image-container {
-            position: relative;
-            overflow: hidden;
-            border-radius: 15px 15px 0 0;
-        }
-
-        .image-container img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.5s ease;
-        }
-
-        .image-container:hover img {
-            transform: scale(1.05);
-        }
-
-        .reaction-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .search-bar {
-            background: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-
-        .upload-card {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-
-        .btn-custom {
-            background: var(--primary-color);
-            border: none;
-            padding: 10px 20px;
-            border-radius: 25px;
-            transition: all 0.3s ease;
-            white-space: nowrap;
-        }
-
-        .btn-custom:hover {
-            background: var(--secondary-color);
-            transform: translateY(-2px);
-        }
-
-        .btn-danger {
-            background: var(--accent-color);
-            border: none;
-            border-radius: 25px;
-        }
-
-        .delete-form {
-            margin-top: 10px;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .image-card:hover .delete-form {
-            opacity: 1;
-        }
-
-        .stats {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-            color: var(--secondary-color);
-        }
-
-        .floating-btn {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            z-index: 1000;
-        }
-
-        .floating-btn:hover {
-            transform: scale(1.1);
-        }
-
-        .upload-progress {
-            display: none;
-            margin-top: 10px;
-        }
-
-        .image-info {
-            padding: 15px;
-        }
-
-        .image-title {
-            font-weight: bold;
-            color: var(--secondary-color);
-            margin-bottom: 5px;
-        }
-
-        .image-description {
-            color: #666;
-            margin: 10px 0;
-            font-size: 0.9rem;
-        }
-
-        .image-phone {
-            color: var(--primary-color);
-            font-weight: 500;
-            margin-bottom: 5px;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-
-        /* Ajustes para melhor visualização em dispositivos móveis */
-        .input-group {
-            flex-wrap: nowrap;
-        }
-
-        .input-group input {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .input-group .btn {
-            white-space: nowrap;
-        }
-
-        /* Ajuste para o formulário de upload em dispositivos móveis */
-        @media (max-width: 767px) {
-            .upload-form input[type="file"] {
-                font-size: 0.9rem;
-            }
-            
-            .upload-form textarea {
-                font-size: 0.9rem;
-            }
-        }
-
-        /* Estilos para o modal de imagens */
-        .modal-image {
-            cursor: pointer;
-            transition: transform 0.3s ease;
-        }
-
-        .modal-image:hover {
-            transform: scale(1.05);
-        }
-
-        .modal-content {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            border: none;
-        }
-
-        .modal-header {
-            border-bottom: none;
-            padding: 20px;
-        }
-
-        .modal-body {
-            padding: 20px;
-        }
-
-        .modal-footer {
-            border-top: none;
-            padding: 20px;
-        }
-
-        /* Estilos para o calendário */
-        .calendar-container {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .date-time {
-            font-size: 1.2rem;
-            color: var(--secondary-color);
-            text-align: center;
-            margin-bottom: 10px;
-        }
-
-        /* Estilos para o botão de upload personalizado */
-        .custom-file-upload {
-            border: 2px dashed var(--primary-color);
-            border-radius: 15px;
-            padding: 30px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.5);
-            margin-bottom: 20px;
-            position: relative;
-        }
-
-        .custom-file-upload:hover {
-            background: rgba(255, 255, 255, 0.8);
-            transform: translateY(-2px);
-            border-color: var(--secondary-color);
-        }
-
-        .custom-file-upload i {
-            font-size: 3rem;
-            color: var(--primary-color);
-            margin-bottom: 10px;
-        }
-
-        .custom-file-upload p {
-            margin: 0;
-            color: var(--secondary-color);
-            font-size: 1.1rem;
-            font-weight: 500;
-        }
-
-        .custom-file-upload .file-info {
-            color: var(--primary-color);
-            font-size: 0.9rem;
-        }
-
-        .selected-files {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .file-preview {
-            position: relative;
-            width: 100px;
-            height: 100px;
+            background: white;
             border-radius: 10px;
             overflow: hidden;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            transition: transform 0.3s;
         }
-
-        .file-preview img {
+        .image-card:hover {
+            transform: translateY(-5px);
+        }
+        .image-container {
+            position: relative;
+            padding-top: 75%;
+            overflow: hidden;
+        }
+        .image-container img {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-
-        .file-preview .remove-file {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: var(--accent-color);
-            font-size: 0.8rem;
-        }
-
-        .file-preview .remove-file:hover {
-            background: var(--accent-color);
-            color: white;
-        }
-
-        /* Estilos para o botão de voltar */
-        .back-to-top {
-            position: fixed;
-            bottom: 100px;
-            right: 30px;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            background: var(--secondary-color);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-        }
-
-        .back-to-top.visible {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .back-to-top:hover {
-            transform: translateY(-5px);
-        }
-
-        /* Estilos para imagens adicionais */
-        .additional-images {
-            display: none;
-            margin-top: 10px;
-        }
-
-        .image-card:hover .additional-images {
-            display: block;
-        }
-
-        .additional-image {
-            width: 100%;
-            height: 100px;
-            object-fit: cover;
-            border-radius: 10px;
-            margin-bottom: 5px;
-            cursor: pointer;
-            transition: transform 0.3s ease;
-        }
-
-        .additional-image:hover {
-            transform: scale(1.05);
-        }
-
-        /* Estilos para o formulário de imagens adicionais */
-        .add-more-images {
-            background: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 15px;
-            margin-top: 20px;
-        }
-
-        .custom-file-upload-sm {
-            border: 2px dashed var(--primary-color);
-            border-radius: 10px;
+        .image-info {
             padding: 15px;
+        }
+        .upload-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .login-prompt {
             text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: rgba(255, 255, 255, 0.5);
-            margin-bottom: 10px;
-        }
-
-        .custom-file-upload-sm:hover {
-            background: rgba(255, 255, 255, 0.8);
-            transform: translateY(-2px);
-            border-color: var(--secondary-color);
-        }
-
-        .custom-file-upload-sm i {
-            font-size: 2rem;
-            color: var(--primary-color);
-            margin-bottom: 5px;
-        }
-
-        .custom-file-upload-sm p {
-            margin: 0;
-            color: var(--secondary-color);
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .selected-files-sm {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-bottom: 10px;
-        }
-
-        .selected-files-sm .file-preview {
-            width: 80px;
-            height: 80px;
-        }
-
-        /* Limitar o número de arquivos selecionados */
-        .file-limit-message {
-            color: var(--accent-color);
-            font-size: 0.8rem;
-            margin-top: 5px;
-            display: none;
-        }
-
-        /* Estilos para o modal de imagens */
-        .main-image-container {
-            text-align: center;
+            padding: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
             margin-bottom: 20px;
         }
-
-        .main-image-container img {
-            max-height: 400px;
-            width: auto;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .additional-images-grid {
-            background: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border-radius: 15px;
-            margin-top: 20px;
-        }
-
-        .additional-images-grid h6 {
-            color: var(--secondary-color);
-            margin-bottom: 15px;
-            font-weight: 500;
-        }
-
-        .preview-table {
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 15px;
-            padding: 20px;
-            margin-top: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .preview-table table {
-            margin-bottom: 0;
-        }
-
-        .preview-table th {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-        }
-
-        .preview-table td {
-            vertical-align: middle;
-        }
-
-        .preview-table img {
-            max-width: 100px;
-            border-radius: 5px;
-        }
-
-        .preview-table .btn-sm {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
+        .search-bar {
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -595,193 +67,78 @@
             <a class="navbar-brand" href="{{ url_for('index') }}">Galeria de Imagens</a>
             <div class="navbar-nav ms-auto">
                 {% if session.get('user_id') %}
-                    <a class="nav-link btn btn-outline-light me-2" href="{{ url_for('upload') }}">
-                        <i class="fas fa-upload"></i> Upload
-                    </a>
+                    <a class="nav-link" href="{{ url_for('upload') }}">Fazer Upload</a>
                     <a class="nav-link" href="{{ url_for('logout') }}">Sair</a>
                 {% else %}
-                    <a class="nav-link btn btn-outline-light" href="{{ url_for('login') }}">
-                        <i class="fas fa-sign-in-alt"></i> Login
-                    </a>
+                    <a class="nav-link" href="{{ url_for('login') }}">Login</a>
                 {% endif %}
             </div>
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <div class="gallery-container">
         {% if not session.get('user_id') %}
-            <div class="alert alert-info text-center">
-                <i class="fas fa-info-circle"></i> Faça login para fazer upload de imagens
+            <div class="login-prompt">
+                <h4>Quer fazer upload de imagens?</h4>
+                <p>Faça login para começar a compartilhar suas imagens!</p>
+                <a href="{{ url_for('login') }}" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Fazer Login
+                </a>
             </div>
         {% endif %}
 
-        <h1 class="text-center mb-4 animate__animated animate__fadeIn">Galeria de Imagens</h1>
-
-        <!-- Barra de Pesquisa -->
-        <div class="search-bar animate__animated animate__fadeInUp">
+        <div class="search-bar">
             <form action="{{ url_for('search') }}" method="get">
                 <div class="input-group">
-                    <input type="text" class="form-control" name="q" placeholder="Pesquisar por nome ou descrição..." value="{{ query }}">
-                    <button class="btn btn-custom" type="submit">
+                    <input type="text" class="form-control" name="q" placeholder="Pesquisar imagens..." value="{{ query }}">
+                    <button class="btn btn-primary" type="submit">
                         <i class="fas fa-search"></i> Pesquisar
                     </button>
                 </div>
             </form>
         </div>
 
-        <!-- Formulário de Upload -->
-        <div class="upload-card animate__animated animate__fadeInUp">
-            <div class="card-body">
-                <h5 class="card-title">
-                    <i class="fas fa-cloud-upload-alt"></i> Enviar Imagens
-                </h5>
-                <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data" id="uploadForm" class="upload-form">
-                    <div class="mb-3">
-                        <input type="text" class="form-control" name="name" placeholder="Nome" required>
-                    </div>
-                    <div class="mb-3">
-                        <input type="tel" class="form-control" name="phone" placeholder="Telefone" required>
-                    </div>
-                    <div class="mb-3">
-                        <textarea class="form-control" name="description" placeholder="Descrição" rows="3"></textarea>
-                    </div>
-                    <div class="custom-file-upload" onclick="document.getElementById('imageInput').click()">
-                        <i class="fas fa-images"></i>
-                        <p>Escolha até 10 imagens</p>
-                        <small class="text-muted">Clique ou arraste os arquivos aqui</small>
-                        <small class="text-muted d-block">Suporta fotos de celular e álbum</small>
-                        <div class="file-info mt-2">
-                            <span id="fileCount">0 arquivos selecionados</span>
-                        </div>
-                    </div>
-                    <input type="file" id="imageInput" name="images" accept="image/*" capture="environment" multiple style="display: none;">
-                    <div class="selected-files mt-3" id="selectedFiles"></div>
-                    
-                    <!-- Tabela de Preview -->
-                    <div class="preview-table mt-3" id="previewTable" style="display: none;">
-                        <h6 class="mb-3">Prévia das Imagens</h6>
-                        <div class="table-responsive">
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Imagem</th>
-                                        <th>Nome do Arquivo</th>
-                                        <th>Tamanho</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="previewTableBody">
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="mt-3">
-                        <label class="form-label">Selecione a imagem principal:</label>
-                        <select class="form-control" name="main_image_index" id="mainImageSelect" required>
-                            <option value="">Selecione uma imagem principal</option>
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-custom mt-3">
-                        <i class="fas fa-upload"></i> Enviar Imagens
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Mensagens Flash -->
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
-                    <div class="alert alert-info animate__animated animate__fadeIn">
-                        <i class="fas fa-info-circle"></i> {{ message }}
+                    <div class="alert alert-info">
+                        {{ message }}
                     </div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
-        <!-- Lista de Imagens -->
         <div class="row">
             {% if images %}
                 {% for image in images %}
-                    <div class="col-12 col-sm-6 col-md-4 animate__animated animate__fadeInUp">
-                        <div class="card image-card">
-                            <div class="image-container" data-bs-toggle="modal" data-bs-target="#imageModal{{ image.id }}">
+                    <div class="col-md-4 col-sm-6">
+                        <div class="image-card">
+                            <div class="image-container">
                                 <img src="{{ url_for('get_image', image_id=image.id) }}" alt="{{ image.name }}">
                             </div>
-                            <div class="additional-images">
-                                {% for i in range(1, 11) %}
-                                    {% if image.additional_images and image.additional_images[i-1] %}
-                                        <img src="{{ url_for('get_additional_image', image_id=image.id, index=i-1) }}" 
-                                             class="additional-image" 
-                                             alt="Imagem adicional {{ i }}"
-                                             data-bs-toggle="modal" 
-                                             data-bs-target="#imageModal{{ image.id }}">
-                                    {% endif %}
-                                {% endfor %}
-                            </div>
                             <div class="image-info">
-                                <h5 class="image-title">{{ image.name }}</h5>
-                                <p class="image-phone">
-                                    <i class="fas fa-phone"></i> {{ image.phone }}
-                                </p>
-                                <p class="image-description">{{ image.description }}</p>
-                                <div class="stats">
-                                    <span><i class="fas fa-thumbs-up"></i> {{ image.likes }}</span>
-                                    <span><i class="fas fa-thumbs-down"></i> {{ image.dislikes }}</span>
-                                </div>
-                                <div class="reaction-buttons">
-                                    <button class="btn btn-success like-btn" data-image-id="{{ image.id }}">
-                                        <i class="fas fa-thumbs-up"></i> Gostei
-                                    </button>
-                                    <button class="btn btn-danger dislike-btn" data-image-id="{{ image.id }}">
-                                        <i class="fas fa-thumbs-down"></i> Não Gostei
-                                    </button>
-                                </div>
-                                <form action="{{ url_for('delete_image', image_id=image.id) }}" method="post" class="delete-form">
-                                    <div class="input-group">
-                                        <input type="password" class="form-control" name="password" placeholder="Digite a senha para deletar">
-                                        <button class="btn btn-danger" type="submit">
-                                            <i class="fas fa-trash"></i> Deletar
-                                        </button>
+                                <h5>{{ image.name }}</h5>
+                                <p><i class="fas fa-phone"></i> {{ image.phone }}</p>
+                                <p>{{ image.description }}</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span class="text-success">
+                                            <i class="fas fa-thumbs-up"></i> {{ image.likes }}
+                                        </span>
+                                        <span class="text-danger ms-2">
+                                            <i class="fas fa-thumbs-down"></i> {{ image.dislikes }}
+                                        </span>
                                     </div>
-                                    <small class="text-muted d-block mt-1">Senha para deletar: 2121</small>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Modal para a imagem -->
-                    <div class="modal fade" id="imageModal{{ image.id }}" tabindex="-1">
-                        <div class="modal-dialog modal-lg">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">{{ image.name }}</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <!-- Imagem principal -->
-                                    <div class="main-image-container mb-4">
-                                        <img src="{{ url_for('get_image', image_id=image.id) }}" class="img-fluid modal-image" alt="{{ image.name }}">
-                                    </div>
-
-                                    <!-- Grid de imagens adicionais -->
-                                    <div class="additional-images-grid mt-4">
-                                        <h6>Imagens adicionais</h6>
-                                        <div class="row">
-                                            {% for additional_image in image.additional_images %}
-                                                <div class="col-4 col-md-3 mb-3">
-                                                    <img src="{{ url_for('get_additional_image', image_id=image.id, index=loop.index0) }}" 
-                                                         class="img-fluid modal-image" 
-                                                         alt="Imagem adicional {{ loop.index }}"
-                                                         onclick="changeMainImage(this)">
-                                                </div>
-                                            {% endfor %}
+                                    {% if session.get('user_id') %}
+                                        <div>
+                                            <button class="btn btn-sm btn-success like-btn" data-image-id="{{ image.id }}">
+                                                <i class="fas fa-thumbs-up"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-danger dislike-btn" data-image-id="{{ image.id }}">
+                                                <i class="fas fa-thumbs-down"></i>
+                                            </button>
                                         </div>
-                                    </div>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -789,220 +146,26 @@
                 {% endfor %}
             {% else %}
                 <div class="col-12">
-                    <div class="alert alert-warning animate__animated animate__fadeIn">
-                        <i class="fas fa-exclamation-circle"></i> Nenhuma imagem encontrada.
+                    <div class="alert alert-info">
+                        Nenhuma imagem encontrada.
                     </div>
                 </div>
             {% endif %}
         </div>
     </div>
 
-    <div class="floating-btn pulse" onclick="document.getElementById('uploadForm').scrollIntoView({behavior: 'smooth'})">
-        <i class="fas fa-plus"></i>
-    </div>
-
-    <div class="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
-        <i class="fas fa-arrow-up"></i>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
-        // Atualizar data e hora
-        function updateDateTime() {
-            const now = new Date();
-            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
-            
-            document.getElementById('current-date').textContent = now.toLocaleDateString('pt-BR', dateOptions);
-            document.getElementById('current-time').textContent = now.toLocaleTimeString('pt-BR', timeOptions);
-        }
-
-        setInterval(updateDateTime, 1000);
-        updateDateTime();
-
-        // Mostrar/esconder botão de voltar ao topo
-        window.addEventListener('scroll', function() {
-            const backToTop = document.querySelector('.back-to-top');
-            if (window.scrollY > 300) {
-                backToTop.classList.add('visible');
-            } else {
-                backToTop.classList.remove('visible');
-            }
-        });
-
-        // Função para trocar a imagem principal no modal
-        function changeMainImage(clickedImage) {
-            const mainImageContainer = document.querySelector('.main-image-container img');
-            mainImageContainer.src = clickedImage.src;
-            mainImageContainer.classList.add('animate__animated', 'animate__fadeIn');
-            setTimeout(() => mainImageContainer.classList.remove('animate__animated', 'animate__fadeIn'), 1000);
-        }
-
-        // Gerenciamento de arquivos selecionados
-        const fileInput = document.getElementById('imageInput');
-        const selectedFiles = document.getElementById('selectedFiles');
-        const fileCount = document.getElementById('fileCount');
-        const mainImageSelect = document.getElementById('mainImageSelect');
-        const MAX_FILES = 10;
-
-        // Função para corrigir a orientação da imagem
-        function fixImageOrientation(file, callback) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    
-                    // Verifica a orientação da imagem
-                    const width = img.width;
-                    const height = img.height;
-                    
-                    // Ajusta o tamanho do canvas
-                    canvas.width = width;
-                    canvas.height = height;
-                    
-                    // Desenha a imagem no canvas
-                    ctx.drawImage(img, 0, 0);
-                    
-                    // Converte para base64
-                    const dataURL = canvas.toDataURL(file.type);
-                    callback(dataURL);
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        fileInput.addEventListener('change', function() {
-            selectedFiles.innerHTML = '';
-            mainImageSelect.innerHTML = '<option value="">Selecione uma imagem principal</option>';
-            const previewTableBody = document.getElementById('previewTableBody');
-            previewTableBody.innerHTML = '';
-            const previewTable = document.getElementById('previewTable');
-            const files = this.files;
-            
-            if (files.length > MAX_FILES) {
-                alert(`Você pode adicionar no máximo ${MAX_FILES} imagens.`);
-                this.value = '';
-                return;
-            }
-            
-            fileCount.textContent = `${files.length} arquivo(s) selecionado(s)`;
-            previewTable.style.display = files.length > 0 ? 'block' : 'none';
-            
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                if (file.type.startsWith('image/')) {
-                    fixImageOrientation(file, function(dataURL) {
-                        // Adiciona ao preview
-                        const preview = document.createElement('div');
-                        preview.className = 'file-preview';
-                        preview.innerHTML = `
-                            <img src="${dataURL}" alt="${file.name}">
-                            <div class="remove-file" onclick="removeFile(${i})">
-                                <i class="fas fa-times"></i>
-                            </div>
-                        `;
-                        selectedFiles.appendChild(preview);
-                        
-                        // Adiciona à tabela
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td><img src="${dataURL}" alt="${file.name}" style="max-width: 100px;"></td>
-                            <td>${file.name}</td>
-                            <td>${formatFileSize(file.size)}</td>
-                            <td>
-                                <button class="btn btn-sm btn-danger" onclick="removeFile(${i})">
-                                    <i class="fas fa-times"></i> Remover
-                                </button>
-                            </td>
-                        `;
-                        previewTableBody.appendChild(row);
-                        
-                        // Adiciona opção para selecionar imagem principal
-                        const option = document.createElement('option');
-                        option.value = i;
-                        option.textContent = `Imagem ${i + 1}`;
-                        mainImageSelect.appendChild(option);
-                    });
-                }
-            }
-        });
-
-        function removeFile(index) {
-            const dt = new DataTransfer();
-            const files = fileInput.files;
-            
-            for (let i = 0; i < files.length; i++) {
-                if (i !== index) {
-                    dt.items.add(files[i]);
-                }
-            }
-            
-            fileInput.files = dt.files;
-            fileInput.dispatchEvent(new Event('change'));
-        }
-
-        // Função para formatar o tamanho do arquivo
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        // Drag and drop melhorado
-        const dropZone = document.querySelector('.custom-file-upload');
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.style.background = 'rgba(255, 255, 255, 0.9)';
-            dropZone.style.borderColor = 'var(--secondary-color)';
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.style.background = 'rgba(255, 255, 255, 0.5)';
-            dropZone.style.borderColor = 'var(--primary-color)';
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.style.background = 'rgba(255, 255, 255, 0.5)';
-            dropZone.style.borderColor = 'var(--primary-color)';
-            
-            if (e.dataTransfer.files.length > 0) {
-                fileInput.files = e.dataTransfer.files;
-                fileInput.dispatchEvent(new Event('change'));
-            }
-        });
-
-        // Animações de scroll
-        document.addEventListener('DOMContentLoaded', function() {
-            const cards = document.querySelectorAll('.image-card');
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('animate__animated', 'animate__fadeInUp');
-                    }
-                });
-            }, { threshold: 0.1 });
-
-            cards.forEach(card => observer.observe(card));
-        });
-
-        // Sistema de curtidas
         document.querySelectorAll('.like-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const imageId = this.dataset.imageId;
-                this.classList.add('animate__animated', 'animate__pulse');
                 fetch(`/like/${imageId}`, { method: 'POST' })
                     .then(response => response.json())
                     .then(data => {
-                        this.innerHTML = `<i class="fas fa-thumbs-up"></i> Gostei (${data.likes})`;
-                        setTimeout(() => this.classList.remove('animate__animated', 'animate__pulse'), 1000);
+                        const likesElement = this.parentElement.previousElementSibling.querySelector('.text-success');
+                        const dislikesElement = this.parentElement.previousElementSibling.querySelector('.text-danger');
+                        likesElement.innerHTML = `<i class="fas fa-thumbs-up"></i> ${data.likes}`;
+                        dislikesElement.innerHTML = `<i class="fas fa-thumbs-down"></i> ${data.dislikes}`;
                     });
             });
         });
@@ -1010,30 +173,15 @@
         document.querySelectorAll('.dislike-btn').forEach(button => {
             button.addEventListener('click', function() {
                 const imageId = this.dataset.imageId;
-                this.classList.add('animate__animated', 'animate__pulse');
                 fetch(`/dislike/${imageId}`, { method: 'POST' })
                     .then(response => response.json())
                     .then(data => {
-                        this.innerHTML = `<i class="fas fa-thumbs-down"></i> Não Gostei (${data.dislikes})`;
-                        setTimeout(() => this.classList.remove('animate__animated', 'animate__pulse'), 1000);
+                        const likesElement = this.parentElement.previousElementSibling.querySelector('.text-success');
+                        const dislikesElement = this.parentElement.previousElementSibling.querySelector('.text-danger');
+                        likesElement.innerHTML = `<i class="fas fa-thumbs-up"></i> ${data.likes}`;
+                        dislikesElement.innerHTML = `<i class="fas fa-thumbs-down"></i> ${data.dislikes}`;
                     });
             });
-        });
-
-        // Simulação de progresso de upload
-        document.getElementById('uploadForm').addEventListener('submit', function() {
-            const progressBar = this.querySelector('.progress-bar');
-            const progressContainer = this.querySelector('.upload-progress');
-            progressContainer.style.display = 'block';
-            
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += 10;
-                progressBar.style.width = progress + '%';
-                if (progress >= 100) {
-                    clearInterval(interval);
-                }
-            }, 200);
         });
     </script>
 </body>

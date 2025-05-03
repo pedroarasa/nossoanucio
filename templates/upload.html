@@ -1,18 +1,19 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload de Imagens</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         .upload-container {
-            max-width: 800px;
+            max-width: 600px;
             margin: 2rem auto;
             padding: 2rem;
             background: white;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         .preview-container {
             display: grid;
@@ -47,10 +48,6 @@
             justify-content: center;
             font-weight: bold;
         }
-        .preview-item:hover {
-            transform: scale(1.05);
-            transition: transform 0.2s;
-        }
         .remove-btn {
             position: absolute;
             top: 5px;
@@ -64,26 +61,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-        }
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-        }
-        .file-input-wrapper input[type=file] {
-            position: absolute;
-            left: 0;
-            top: 0;
-            opacity: 0;
-            cursor: pointer;
-        }
-        .custom-file-btn {
-            display: inline-block;
-            padding: 10px 20px;
-            background: #007bff;
-            color: white;
-            border-radius: 5px;
             cursor: pointer;
         }
     </style>
@@ -130,19 +107,17 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Selecione as Imagens</label>
-                    <div class="file-input-wrapper">
-                        <input type="file" id="images" name="images" multiple accept="image/*" class="form-control" required>
-                        <div class="custom-file-btn">Escolher Imagens</div>
-                    </div>
-                    <small class="text-muted">Você pode selecionar até 10 imagens. A primeira imagem será a principal.</small>
+                    <label class="form-label">Selecione a Imagem</label>
+                    <input type="file" id="images" name="images" accept="image/*" class="form-control" required>
+                    <small class="text-muted">Você pode fazer upload de uma imagem por vez</small>
                     <div id="fileError" class="text-danger mt-1" style="display: none;"></div>
                 </div>
 
                 <div id="preview" class="preview-container"></div>
-                <input type="hidden" id="main_image_index" name="main_image_index" value="0">
 
-                <button type="submit" class="btn btn-primary mt-3" id="submitBtn">Enviar Imagens</button>
+                <button type="submit" class="btn btn-primary mt-3" id="submitBtn">
+                    <i class="fas fa-upload"></i> Enviar Imagem
+                </button>
             </form>
         </div>
     </div>
@@ -150,155 +125,48 @@
     <script>
         const fileInput = document.getElementById('images');
         const preview = document.getElementById('preview');
-        const mainImageIndex = document.getElementById('main_image_index');
         const fileError = document.getElementById('fileError');
         const submitBtn = document.getElementById('submitBtn');
-        const fileCount = document.getElementById('fileCount');
-        let selectedImages = [];
 
         fileInput.addEventListener('change', function(e) {
             preview.innerHTML = '';
-            selectedImages = [];
             fileError.style.display = 'none';
             
-            if (this.files.length > 10) {
-                fileError.textContent = 'Você pode selecionar no máximo 10 imagens';
-                fileError.style.display = 'block';
-                this.value = '';
-                return;
-            }
-
             if (this.files.length === 0) {
-                fileError.textContent = 'Selecione pelo menos uma imagem';
+                fileError.textContent = 'Selecione uma imagem';
                 fileError.style.display = 'block';
                 return;
             }
 
-            // Atualiza o contador de arquivos
-            fileCount.textContent = `${this.files.length} arquivo(s) selecionado(s)`;
+            const file = this.files[0];
+            if (!file.type.startsWith('image/')) {
+                fileError.textContent = 'Apenas arquivos de imagem são permitidos';
+                fileError.style.display = 'block';
+                return;
+            }
 
-            Array.from(this.files).forEach((file, index) => {
-                if (!file.type.startsWith('image/')) {
-                    fileError.textContent = 'Apenas arquivos de imagem são permitidos';
-                    fileError.style.display = 'block';
-                    return;
-                }
-
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const div = document.createElement('div');
-                    div.className = 'preview-item';
-                    div.innerHTML = `
-                        <img src="${e.target.result}" alt="Preview">
-                        <button type="button" class="remove-btn" data-index="${index}">×</button>
-                    `;
-                    preview.appendChild(div);
-
-                    // Seleciona a primeira imagem como principal por padrão
-                    if (index === 0) {
-                        div.classList.add('selected');
-                        mainImageIndex.value = 0;
-                    }
-
-                    div.addEventListener('click', function() {
-                        document.querySelectorAll('.preview-item').forEach(item => {
-                            item.classList.remove('selected');
-                        });
-                        this.classList.add('selected');
-                        mainImageIndex.value = index;
-                    });
-
-                    div.querySelector('.remove-btn').addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        const index = parseInt(this.dataset.index);
-                        selectedImages.splice(index, 1);
-                        updateFileInput();
-                        updatePreviews();
-                    });
-                };
-                reader.readAsDataURL(file);
-                selectedImages.push(file);
-            });
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const div = document.createElement('div');
+                div.className = 'preview-item';
+                div.innerHTML = `
+                    <img src="${e.target.result}" alt="Preview">
+                `;
+                preview.appendChild(div);
+            };
+            reader.readAsDataURL(file);
         });
 
-        function updateFileInput() {
-            const dataTransfer = new DataTransfer();
-            selectedImages.forEach(file => {
-                dataTransfer.items.add(file);
-            });
-            fileInput.files = dataTransfer.files;
-            fileCount.textContent = `${selectedImages.length} arquivo(s) selecionado(s)`;
-        }
-
-        function updatePreviews() {
-            preview.innerHTML = '';
-            selectedImages.forEach((file, index) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const div = document.createElement('div');
-                    div.className = 'preview-item' + (index === parseInt(mainImageIndex.value) ? ' selected' : '');
-                    div.innerHTML = `
-                        <img src="${e.target.result}" alt="Preview">
-                        <button type="button" class="remove-btn" data-index="${index}">×</button>
-                    `;
-                    preview.appendChild(div);
-
-                    div.addEventListener('click', function() {
-                        document.querySelectorAll('.preview-item').forEach(item => {
-                            item.classList.remove('selected');
-                        });
-                        this.classList.add('selected');
-                        mainImageIndex.value = index;
-                    });
-
-                    div.querySelector('.remove-btn').addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        const index = parseInt(this.dataset.index);
-                        selectedImages.splice(index, 1);
-                        updateFileInput();
-                        updatePreviews();
-                    });
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        // Validação do formulário antes de enviar
         document.getElementById('uploadForm').addEventListener('submit', function(e) {
             if (fileInput.files.length === 0) {
                 e.preventDefault();
-                fileError.textContent = 'Selecione pelo menos uma imagem';
+                fileError.textContent = 'Selecione uma imagem';
                 fileError.style.display = 'block';
                 return;
             }
 
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enviando...';
-        });
-
-        // Suporte para arrastar e soltar arquivos
-        const dropZone = document.querySelector('.custom-file-upload');
-
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.style.background = 'rgba(255, 255, 255, 0.9)';
-            dropZone.style.borderColor = 'var(--secondary-color)';
-        });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.style.background = 'rgba(255, 255, 255, 0.5)';
-            dropZone.style.borderColor = 'var(--primary-color)';
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.style.background = 'rgba(255, 255, 255, 0.5)';
-            dropZone.style.borderColor = 'var(--primary-color)';
-            
-            if (e.dataTransfer.files.length > 0) {
-                fileInput.files = e.dataTransfer.files;
-                fileInput.dispatchEvent(new Event('change'));
-            }
         });
     </script>
 </body>

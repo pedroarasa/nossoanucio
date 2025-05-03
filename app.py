@@ -151,53 +151,31 @@ def upload():
         flash('Nenhum arquivo selecionado')
         return redirect(url_for('upload'))
     
-    files = request.files.getlist('images')
-    if not files or files[0].filename == '':
+    file = request.files['images']
+    if file.filename == '':
         flash('Nenhum arquivo selecionado')
         return redirect(url_for('upload'))
     
-    if len(files) > 10:
-        flash('Você pode adicionar no máximo 10 imagens')
-        return redirect(url_for('upload'))
-    
-    main_image_index = int(request.form.get('main_image_index', 0))
-    if main_image_index >= len(files):
-        flash('Índice da imagem principal inválido')
-        return redirect(url_for('upload'))
-    
     try:
-        # Criar o registro principal
-        main_image = files[main_image_index]
-        main_image_data = process_image(main_image)
-        main_image_type = main_image.content_type
+        # Processar a imagem
+        image_data = process_image(file)
+        image_type = file.content_type
         
+        # Criar o registro da imagem
         new_image = Image(
             name=request.form['name'],
             phone=request.form['phone'],
             description=request.form['description'],
-            image_data=main_image_data,
-            image_type=main_image_type,
+            image_data=image_data,
+            image_type=image_type,
             user_id=session['user_id'],
             is_public=True
         )
+        
         db.session.add(new_image)
         db.session.commit()
         
-        # Adicionar imagens adicionais
-        for i, file in enumerate(files):
-            if i != main_image_index:
-                image_data = process_image(file)
-                image_type = file.content_type
-                
-                new_additional_image = AdditionalImage(
-                    main_image_id=new_image.id,
-                    image_data=image_data,
-                    image_type=image_type
-                )
-                db.session.add(new_additional_image)
-        
-        db.session.commit()
-        flash('Imagens enviadas com sucesso!')
+        flash('Imagem enviada com sucesso!')
         return redirect(url_for('index'))
     except Exception as e:
         db.session.rollback()
