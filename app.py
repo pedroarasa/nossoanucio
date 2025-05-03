@@ -115,7 +115,9 @@ def logout():
 
 @app.route('/')
 def index():
-    images = Image.query.filter_by(is_public=True).order_by(Image.upload_date.desc()).all()
+    query = Image.query.filter_by(is_public=True).order_by(Image.upload_date.desc())
+    print(f"SQL Query: {query}")
+    images = query.all()
     return render_template('index.html', images=images)
 
 @app.route('/image/<int:image_id>')
