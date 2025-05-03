@@ -224,26 +224,42 @@ def search():
     return render_template('index.html', announcements=announcements, query=query)
 
 def process_image(file):
-    img = PILImage.open(file)
-    
-    # Corrigir a orientação da imagem
-    if hasattr(img, '_getexif'):
-        exif = img._getexif()
-        if exif is not None:
-            orientation = exif.get(274)
-            if orientation == 3:
-                img = img.rotate(180, expand=True)
-            elif orientation == 6:
-                img = img.rotate(270, expand=True)
-            elif orientation == 8:
-                img = img.rotate(90, expand=True)
-    
-    # Converter para bytes
-    img_byte_arr = io.BytesIO()
-    img.save(img_byte_arr, format=img.format or 'JPEG')
-    img_byte_arr = img_byte_arr.getvalue()
-    
-    return img_byte_arr
+    try:
+        # Lista de formatos de imagem suportados
+        supported_formats = ['JPEG', 'PNG', 'GIF', 'BMP', 'TIFF', 'WEBP']
+        
+        # Abrir a imagem
+        img = PILImage.open(file)
+        
+        # Corrigir a orientação da imagem
+        if hasattr(img, '_getexif'):
+            exif = img._getexif()
+            if exif is not None:
+                orientation = exif.get(274)
+                if orientation == 3:
+                    img = img.rotate(180, expand=True)
+                elif orientation == 6:
+                    img = img.rotate(270, expand=True)
+                elif orientation == 8:
+                    img = img.rotate(90, expand=True)
+        
+        # Verificar se o formato é suportado
+        if img.format not in supported_formats:
+            # Converter para JPEG se o formato não for suportado
+            img = img.convert('RGB')
+            format_to_save = 'JPEG'
+        else:
+            format_to_save = img.format
+        
+        # Converter para bytes
+        img_byte_arr = io.BytesIO()
+        img.save(img_byte_arr, format=format_to_save, quality=85)
+        img_byte_arr = img_byte_arr.getvalue()
+        
+        return img_byte_arr
+    except Exception as e:
+        logger.error(f'Erro ao processar imagem: {str(e)}')
+        raise
 
 # Adicionar handler de erro
 @app.errorhandler(500)
