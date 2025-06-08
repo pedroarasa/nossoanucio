@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     profile_picture TEXT,
     bio TEXT,
     location TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_admin BOOLEAN DEFAULT FALSE
 );
 
 -- Tabela de anúncios
@@ -81,4 +82,14 @@ CREATE TABLE IF NOT EXISTS follows (
 CREATE INDEX IF NOT EXISTS idx_announcements_user_id ON announcements(user_id);
 CREATE INDEX IF NOT EXISTS idx_images_announcement_id ON images(announcement_id);
 CREATE INDEX IF NOT EXISTS idx_announcements_category ON announcements(category);
-CREATE INDEX IF NOT EXISTS idx_announcements_location ON announcements(location); 
+CREATE INDEX IF NOT EXISTS idx_announcements_location ON announcements(location);
+
+-- Inserir usuário administrador padrão
+INSERT INTO users (username, email, password_hash, location, is_admin)
+VALUES (
+    'admin',
+    'dono@dono',
+    'pbkdf2:sha256:600000$41313769p$1234567890abcdef',
+    'Administração',
+    TRUE
+); 

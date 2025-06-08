@@ -10,18 +10,33 @@ from PIL import Image as PILImage
 import io
 import logging
 import random
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente
+load_dotenv()
 
 # Configurar logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///social.db'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave_secreta_123')
+
+# Configuração do banco de dados Neon
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 
 db = SQLAlchemy(app)
+
+# Criar pasta de uploads se não existir
+if not os.path.exists(app.config['UPLOAD_FOLDER']):
+    os.makedirs(app.config['UPLOAD_FOLDER'])
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -88,9 +103,13 @@ def register():
             flash('Email já cadastrado')
             return redirect(url_for('register'))
         
+        # Criar pasta de uploads se não existir
+        if not os.path.exists(app.config['UPLOAD_FOLDER']):
+            os.makedirs(app.config['UPLOAD_FOLDER'])
+        
         # Salvar foto de perfil
         profile_picture = request.files['profile_picture']
-        if profile_picture:
+        if profile_picture and profile_picture.filename:
             filename = secure_filename(profile_picture.filename)
             profile_picture.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         else:
@@ -266,6 +285,41 @@ def process_image(file):
 def internal_error(error):
     logger.error(f'Erro interno do servidor: {error}')
     return render_template('error.html', error=error), 500
+
+@app.route('/admin')
+def admin_login():
+    return render_template('admin_login.html')
+
+@app.route('/admin/secret', methods=['GET', 'POST'])
+def admin_secret():
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password == '41313769p':  # Senha do administrador
+            session['is_admin'] = True
+            return redirect(url_for('admin_panel'))
+        flash('Senha incorreta')
+        return redirect(url_for('admin_login'))
+    return redirect(url_for('admin_login'))
+
+@app.route('/admin/panel')
+def admin_panel():
+    if not session.get('is_admin'):
+        return redirect(url_for('admin_login'))
+    
+    posts = Post.query.order_by(Post.created_at.desc()).all()
+    return render_template('admin_panel.html', announcements=posts)
+
+@app.route('/admin/delete/<int:announcement_id>', methods=['POST'])
+def admin_delete(announcement_id):
+    if not session.get('is_admin'):
+        return redirect(url_for('admin_login'))
+    
+    post = Post.query.get_or_404(announcement_id)
+    db.session.delete(post)
+    db.session.commit()
+    
+    flash('Anúncio excluído com sucesso!')
+    return redirect(url_for('admin_panel'))
 
 if __name__ == '__main__':
     app.run(debug=True) 
