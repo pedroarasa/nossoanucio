@@ -3,38 +3,54 @@
 {% block title %}Cadastro - Anúncios{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-6 mx-auto">
+<div class="row justify-content-center">
+    <div class="col-md-6">
         <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Cadastro</h4>
+            </div>
             <div class="card-body">
-                <h3 class="card-title text-center mb-4">Criar Conta</h3>
-                <form method="post" enctype="multipart/form-data">
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-danger">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form action="{{ url_for('register') }}" method="post" enctype="multipart/form-data">
                     <div class="mb-3">
-                        <label for="username" class="form-label">Nome de usuário</label>
+                        <label for="username" class="form-label">Nome de Usuário</label>
                         <input type="text" class="form-control" id="username" name="username" required>
                     </div>
+                    
                     <div class="mb-3">
                         <label for="email" class="form-label">Email</label>
                         <input type="email" class="form-control" id="email" name="email" required>
                     </div>
+                    
                     <div class="mb-3">
                         <label for="password" class="form-label">Senha</label>
                         <input type="password" class="form-control" id="password" name="password" required>
                     </div>
+                    
                     <div class="mb-3">
                         <label for="location" class="form-label">Localização</label>
                         <input type="text" class="form-control" id="location" name="location" required>
                     </div>
+                    
                     <div class="mb-3">
                         <label for="profile_picture" class="form-label">Foto de Perfil</label>
                         <input type="file" class="form-control" id="profile_picture" name="profile_picture" accept="image/*" required>
                     </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-register">
-                            <i class="fas fa-user-plus"></i> Cadastrar
-                        </button>
-                    </div>
+                    
+                    <button type="submit" class="btn btn-register w-100">
+                        <i class="fas fa-user-plus"></i> Cadastrar
+                    </button>
                 </form>
+                
                 <div class="text-center mt-3">
                     <p>Já tem uma conta? <a href="{{ url_for('login') }}">Faça login</a></p>
                 </div>

@@ -89,47 +89,54 @@ def index():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if request.method == 'POST':
-        username = request.form['username']
-        email = request.form['email']
-        password = request.form['password']
-        location = request.form['location']
+    try:
+        if request.method == 'POST':
+            username = request.form['username']
+            email = request.form['email']
+            password = request.form['password']
+            location = request.form['location']
+            
+            if User.query.filter_by(username=username).first():
+                flash('Nome de usuário já existe')
+                return redirect(url_for('register'))
+            
+            if User.query.filter_by(email=email).first():
+                flash('Email já cadastrado')
+                return redirect(url_for('register'))
+            
+            # Criar pasta de uploads se não existir
+            upload_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
+            if not os.path.exists(upload_folder):
+                os.makedirs(upload_folder)
+            
+            # Salvar foto de perfil
+            profile_picture = request.files.get('profile_picture')
+            if profile_picture and profile_picture.filename:
+                filename = secure_filename(profile_picture.filename)
+                file_path = os.path.join(upload_folder, filename)
+                profile_picture.save(file_path)
+            else:
+                filename = 'default_profile.png'
+            
+            user = User(
+                username=username,
+                email=email,
+                password_hash=generate_password_hash(password),
+                location=location,
+                profile_picture=filename
+            )
+            
+            db.session.add(user)
+            db.session.commit()
+            
+            flash('Cadastro realizado com sucesso!')
+            return redirect(url_for('login'))
         
-        if User.query.filter_by(username=username).first():
-            flash('Nome de usuário já existe')
-            return redirect(url_for('register'))
-        
-        if User.query.filter_by(email=email).first():
-            flash('Email já cadastrado')
-            return redirect(url_for('register'))
-        
-        # Criar pasta de uploads se não existir
-        if not os.path.exists(app.config['UPLOAD_FOLDER']):
-            os.makedirs(app.config['UPLOAD_FOLDER'])
-        
-        # Salvar foto de perfil
-        profile_picture = request.files['profile_picture']
-        if profile_picture and profile_picture.filename:
-            filename = secure_filename(profile_picture.filename)
-            profile_picture.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        else:
-            filename = 'default_profile.png'
-        
-        user = User(
-            username=username,
-            email=email,
-            password_hash=generate_password_hash(password),
-            location=location,
-            profile_picture=filename
-        )
-        
-        db.session.add(user)
-        db.session.commit()
-        
-        flash('Cadastro realizado com sucesso!')
-        return redirect(url_for('login'))
-    
-    return render_template('register.html')
+        return render_template('register.html')
+    except Exception as e:
+        logger.error(f'Erro no registro: {str(e)}')
+        flash('Erro ao realizar cadastro. Por favor, tente novamente.')
+        return redirect(url_for('register'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
