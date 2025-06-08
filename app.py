@@ -31,6 +31,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(128))
     profile_picture = db.Column(db.String(200))
     bio = db.Column(db.Text)
+    location = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     posts = db.relationship('Post', backref='author', lazy=True)
 
@@ -40,6 +41,7 @@ class Post(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     content = db.Column(db.Text)
     image_url = db.Column(db.String(200))
+    price = db.Column(db.Float)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     likes = db.relationship('Like', backref='post', lazy=True)
     comments = db.relationship('Comment', backref='post', lazy=True)
@@ -66,8 +68,9 @@ def index():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
+    users = User.query.all()
     posts = Post.query.order_by(Post.created_at.desc()).all()
-    return render_template('index.html', posts=posts)
+    return render_template('index.html', users=users, posts=posts)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -75,6 +78,7 @@ def register():
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
+        location = request.form['location']
         
         if User.query.filter_by(username=username).first():
             flash('Nome de usuário já existe')
@@ -84,10 +88,20 @@ def register():
             flash('Email já cadastrado')
             return redirect(url_for('register'))
         
+        # Salvar foto de perfil
+        profile_picture = request.files['profile_picture']
+        if profile_picture:
+            filename = secure_filename(profile_picture.filename)
+            profile_picture.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        else:
+            filename = 'default_profile.png'
+        
         user = User(
             username=username,
             email=email,
-            password_hash=generate_password_hash(password)
+            password_hash=generate_password_hash(password),
+            location=location,
+            profile_picture=filename
         )
         
         db.session.add(user)
@@ -126,11 +140,13 @@ def create_post():
         return redirect(url_for('login'))
     
     content = request.form.get('content')
+    price = request.form.get('price')
     image = request.files.get('image')
     
     post = Post(
         user_id=session['user_id'],
-        content=content
+        content=content,
+        price=float(price) if price else None
     )
     
     if image:
@@ -196,6 +212,12 @@ def search():
 def random_posts():
     posts = Post.query.order_by(db.func.random()).limit(10).all()
     return render_template('random.html', posts=posts)
+
+@app.route('/user/<int:user_id>')
+def user_profile(user_id):
+    user = User.query.get_or_404(user_id)
+    posts = Post.query.filter_by(user_id=user_id).order_by(Post.created_at.desc()).all()
+    return render_template('user_profile.html', user=user, posts=posts)
 
 def process_image(file):
     try:

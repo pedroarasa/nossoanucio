@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Cadastro - Rede Social{% endblock %}
+{% block title %}Cadastro - Anúncios{% endblock %}
 
 {% block content %}
 <div class="row">
@@ -8,7 +8,7 @@
         <div class="card">
             <div class="card-body">
                 <h3 class="card-title text-center mb-4">Criar Conta</h3>
-                <form method="post">
+                <form method="post" enctype="multipart/form-data">
                     <div class="mb-3">
                         <label for="username" class="form-label">Nome de usuário</label>
                         <input type="text" class="form-control" id="username" name="username" required>
@@ -21,8 +21,16 @@
                         <label for="password" class="form-label">Senha</label>
                         <input type="password" class="form-control" id="password" name="password" required>
                     </div>
+                    <div class="mb-3">
+                        <label for="location" class="form-label">Localização</label>
+                        <input type="text" class="form-control" id="location" name="location" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="profile_picture" class="form-label">Foto de Perfil</label>
+                        <input type="file" class="form-control" id="profile_picture" name="profile_picture" accept="image/*" required>
+                    </div>
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-register">
                             <i class="fas fa-user-plus"></i> Cadastrar
                         </button>
                     </div>

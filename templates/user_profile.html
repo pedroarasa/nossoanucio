@@ -1,85 +1,45 @@
 {% extends "base.html" %}
 
-{% block title %}Início - Anúncios{% endblock %}
+{% block title %}{{ user.username }} - Anúncios{% endblock %}
 
 {% block content %}
 <div class="row">
-    <!-- Lista de Usuários -->
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Usuários Cadastrados</h5>
-            </div>
-            <div class="card-body">
-                {% for user in users %}
-                <div class="user-card mb-3" onclick="window.location.href='{{ url_for('user_profile', user_id=user.id) }}'">
-                    <div class="d-flex align-items-center">
-                        <img src="{{ user.profile_picture or url_for('static', filename='default_profile.png') }}" 
-                             class="user-profile-picture me-3" alt="Foto de perfil">
-                        <div>
-                            <h6 class="mb-0">{{ user.username }}</h6>
-                            <small class="text-muted">
-                                <i class="fas fa-map-marker-alt"></i> {{ user.location }}
-                            </small>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
+            <div class="card-body text-center">
+                <img src="{{ user.profile_picture or url_for('static', filename='default_profile.png') }}" 
+                     class="user-profile-picture mb-3" alt="Foto de perfil">
+                <h4>{{ user.username }}</h4>
+                <p class="text-muted">
+                    <i class="fas fa-map-marker-alt"></i> {{ user.location }}
+                </p>
+                {% if user.bio %}
+                <p>{{ user.bio }}</p>
+                {% endif %}
+                <p class="text-muted">
+                    <small>Membro desde {{ user.created_at.strftime('%d/%m/%Y') }}</small>
+                </p>
             </div>
         </div>
     </div>
-
-    <!-- Feed de Anúncios -->
-    <div class="col-md-9">
-        {% if session.get('user_id') %}
-        <div class="card mb-4">
-            <div class="card-body">
-                <form action="{{ url_for('create_post') }}" method="post" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <textarea class="form-control" name="content" rows="3" placeholder="Descreva seu anúncio..."></textarea>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <input type="number" class="form-control" name="price" step="0.01" placeholder="Preço em €" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <input type="file" class="form-control" name="image" accept="image/*" required>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-announcement">
-                        <i class="fas fa-paper-plane"></i> Publicar Anúncio
-                    </button>
-                </form>
-            </div>
-        </div>
-        {% endif %}
-
+    
+    <div class="col-md-8">
+        <h3 class="mb-4">Anúncios de {{ user.username }}</h3>
+        
         {% for post in posts %}
         <div class="card mb-4">
-            <div class="card-header bg-white">
-                <div class="d-flex align-items-center">
-                    <img src="{{ post.author.profile_picture or url_for('static', filename='default_profile.png') }}" 
-                         class="user-profile-picture me-3" alt="Foto de perfil">
-                    <div>
-                        <h6 class="mb-0">{{ post.author.username }}</h6>
-                        <small class="text-muted">
-                            <i class="fas fa-map-marker-alt"></i> {{ post.author.location }}
-                        </small>
-                    </div>
-                </div>
-            </div>
-            {% if post.image_url %}
             <div class="position-relative">
+                {% if post.image_url %}
                 <img src="{{ url_for('static', filename='uploads/' + post.image_url) }}" 
                      class="card-img-top" style="max-height: 400px; object-fit: cover;" alt="Imagem do anúncio">
                 <div class="price-tag">
                     € {{ "%.2f"|format(post.price) }}
                 </div>
                 <div class="location-tag">
-                    <i class="fas fa-map-marker-alt"></i> {{ post.author.location }}
+                    <i class="fas fa-map-marker-alt"></i> {{ user.location }}
                 </div>
+                {% endif %}
             </div>
-            {% endif %}
             <div class="card-body">
                 <p class="card-text">{{ post.content }}</p>
                 <div class="d-flex justify-content-between align-items-center">
@@ -118,9 +78,8 @@
             </div>
         </div>
         {% else %}
-        <div class="text-center">
-            <h4>Nenhum anúncio encontrado</h4>
-            <p>Seja o primeiro a criar um anúncio!</p>
+        <div class="alert alert-info">
+            Este usuário ainda não tem anúncios.
         </div>
         {% endfor %}
     </div>

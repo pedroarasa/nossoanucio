@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash TEXT NOT NULL,
     profile_picture TEXT,
     bio TEXT,
+    location TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS posts (
     user_id INTEGER NOT NULL,
     content TEXT,
     image_url TEXT,
+    price DECIMAL(10,2),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users (id)
 );
