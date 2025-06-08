@@ -29,14 +29,18 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
+# Configurar pasta de uploads
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 
 db = SQLAlchemy(app)
 
 # Criar pasta de uploads se não existir
-if not os.path.exists(app.config['UPLOAD_FOLDER']):
-    os.makedirs(app.config['UPLOAD_FOLDER'])
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -104,17 +108,16 @@ def register():
                 flash('Email já cadastrado')
                 return redirect(url_for('register'))
             
-            # Criar pasta de uploads se não existir
-            upload_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
-            if not os.path.exists(upload_folder):
-                os.makedirs(upload_folder)
-            
             # Salvar foto de perfil
             profile_picture = request.files.get('profile_picture')
             if profile_picture and profile_picture.filename:
-                filename = secure_filename(profile_picture.filename)
-                file_path = os.path.join(upload_folder, filename)
-                profile_picture.save(file_path)
+                try:
+                    filename = secure_filename(profile_picture.filename)
+                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    profile_picture.save(file_path)
+                except Exception as e:
+                    logger.error(f'Erro ao salvar arquivo: {str(e)}')
+                    filename = 'default_profile.png'
             else:
                 filename = 'default_profile.png'
             

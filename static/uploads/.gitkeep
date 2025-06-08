@@ -1,0 +1,2 @@
+# Este arquivo mantém a pasta uploads no git 
+mkdir -p static/uploads && chmod 777 static/uploads 
