@@ -128,7 +128,7 @@
 
 <script>
 function likePost(postId) {
-    fetch(`/like/${postId}`, {
+    fetch(`/post/${postId}/like`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
