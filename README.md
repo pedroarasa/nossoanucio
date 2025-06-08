@@ -1,66 +1,102 @@
-# Sistema de Upload de Imagens
+# Rede Social
 
-Este é um sistema de upload de imagens com funcionalidades de curtir/não curtir, pesquisa e gerenciamento de conteúdo.
+Uma rede social simples onde os usuários podem criar posts com fotos, curtir e comentar em posts de outros usuários.
 
 ## Funcionalidades
 
-- Upload de imagens com nome, telefone e descrição
-- Sistema de curtidas e não curtidas
-- Barra de pesquisa para encontrar imagens específicas
-- Botão de deletar tudo com senha (2121)
-- Armazenamento no banco de dados PostgreSQL Neon
-- Interface responsiva e moderna
+- Cadastro e login de usuários
+- Criação de posts com texto e imagens
+- Curtir posts
+- Comentar em posts
+- Pesquisar posts
+- Feed aleatório de posts
+- Perfil de usuário com foto
 
 ## Requisitos
 
 - Python 3.8 ou superior
-- PostgreSQL Neon (banco de dados)
-- Dependências listadas no requirements.txt
+- pip (gerenciador de pacotes Python)
 
 ## Instalação
 
-1. Clone o repositório
+1. Clone o repositório:
+```bash
+git clone [URL_DO_REPOSITÓRIO]
+cd [NOME_DO_DIRETÓRIO]
+```
+
 2. Crie um ambiente virtual:
 ```bash
 python -m venv venv
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
 ```
 
-3. Instale as dependências:
+3. Ative o ambiente virtual:
+- Windows:
+```bash
+venv\Scripts\activate
+```
+- Linux/Mac:
+```bash
+source venv/bin/activate
+```
+
+4. Instale as dependências:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Crie a pasta para uploads:
+5. Crie o banco de dados:
+```bash
+flask db init
+flask db migrate
+flask db upgrade
+```
+
+6. Crie a pasta para uploads:
 ```bash
 mkdir static/uploads
 ```
 
-## Executando o Projeto
+## Executando a aplicação
 
-1. Ative o ambiente virtual (se ainda não estiver ativado)
-2. Execute o aplicativo:
+1. Ative o ambiente virtual (se ainda não estiver ativo)
+
+2. Execute o servidor:
 ```bash
-python app.py
+flask run
 ```
 
-3. Acesse o sistema em: http://localhost:5000
+3. Acesse a aplicação em seu navegador:
+```
+http://localhost:5000
+```
 
-## Deploy no Render
+## Estrutura do Projeto
 
-1. Crie uma nova aplicação Web no Render
-2. Conecte com seu repositório GitHub
-3. Configure as seguintes variáveis de ambiente:
-   - `FLASK_APP=app.py`
-   - `FLASK_ENV=production`
-   - `SECRET_KEY=sua_chave_secreta_aqui`
+```
+.
+├── app.py              # Arquivo principal da aplicação
+├── requirements.txt    # Dependências do projeto
+├── schema.sql         # Schema do banco de dados
+├── static/            # Arquivos estáticos
+│   └── uploads/       # Pasta para uploads de imagens
+└── templates/         # Templates HTML
+    ├── base.html      # Template base
+    ├── index.html     # Página inicial
+    ├── login.html     # Página de login
+    ├── register.html  # Página de registro
+    ├── search.html    # Página de pesquisa
+    └── random.html    # Página de posts aleatórios
+```
 
-4. O Render irá automaticamente detectar o Python e instalar as dependências
+## Contribuindo
 
-## Uso
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
+3. Faça commit das suas alterações (`git commit -m 'Adiciona nova feature'`)
+4. Faça push para a branch (`git push origin feature/nova-feature`)
+5. Abra um Pull Request
 
-- Para fazer upload: Preencha o formulário com imagem, nome, telefone e descrição
-- Para pesquisar: Use a barra de pesquisa no topo da página
-- Para deletar tudo: Digite a senha 2121 no campo de senha
-- Para curtir/não curtir: Use os botões abaixo de cada imagem 
+## Licença
+
+Este projeto está licenciado sob a licença MIT - veja o arquivo LICENSE para mais detalhes. 

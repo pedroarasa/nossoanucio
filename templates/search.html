@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Pesquisa - Rede Social{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <h3 class="mb-4">Resultados da pesquisa: "{{ query }}"</h3>
+        
+        {% if posts %}
+            {% for post in posts %}
+            <div class="card post-card">
+                <div class="card-header bg-white">
+                    <div class="d-flex align-items-center">
+                        <img src="{{ post.author.profile_picture or url_for('static', filename='default_profile.png') }}" 
+                             class="profile-picture me-2" alt="Foto de perfil">
+                        <div>
+                            <h6 class="mb-0">{{ post.author.username }}</h6>
+                            <small class="text-muted">{{ post.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                        </div>
+                    </div>
+                </div>
+                {% if post.image_url %}
+                <img src="{{ url_for('static', filename='uploads/' + post.image_url) }}" 
+                     class="card-img-top post-image" alt="Imagem da postagem">
+                {% endif %}
+                <div class="card-body">
+                    <p class="card-text">{{ post.content }}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="like-button me-2" onclick="likePost({{ post.id }})" id="like-{{ post.id }}">
+                                <i class="fas fa-heart {% if post.likes|selectattr('user_id', 'equalto', session.get('user_id'))|list %}active{% endif %}"></i>
+                                <span id="like-count-{{ post.id }}">{{ post.likes|length }}</span>
+                            </span>
+                            <span class="text-muted">
+                                <i class="fas fa-comment"></i> {{ post.comments|length }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                Nenhuma postagem encontrada para "{{ query }}"
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

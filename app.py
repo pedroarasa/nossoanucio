@@ -9,6 +9,7 @@ from io import BytesIO
 from PIL import Image as PILImage
 import io
 import logging
+import random
 
 # Configurar logging
 logging.basicConfig(level=logging.DEBUG)
@@ -16,367 +17,185 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://neondb_owner:npg_izJKD7Qm0kEh@ep-wandering-resonance-a9e1300q-pooler.gwc.azure.neon.tech/neondb?sslmode=require'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///social.db'
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 
 db = SQLAlchemy(app)
 
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    phone = db.Column(db.String(20))
+    password_hash = db.Column(db.String(128))
+    profile_picture = db.Column(db.String(200))
+    bio = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    is_admin = db.Column(db.Boolean, default=False)
-    announcements = db.relationship('Announcement', backref='owner', lazy=True)
+    posts = db.relationship('Post', backref='author', lazy=True)
 
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-class Announcement(db.Model):
-    __tablename__ = 'announcements'
+class Post(db.Model):
+    __tablename__ = 'posts'
     id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text)
-    price = db.Column(db.Float, nullable=False)
-    location = db.Column(db.String(200))
-    category = db.Column(db.String(50))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    images = db.relationship('Image', backref='announcement', lazy=True, cascade="all, delete-orphan")
-    is_active = db.Column(db.Boolean, default=True)
-    is_available = db.Column(db.Boolean, default=True)
-
-class Image(db.Model):
-    __tablename__ = 'images'
-    id = db.Column(db.Integer, primary_key=True)
-    image_data = db.Column(db.LargeBinary, nullable=False)
-    image_type = db.Column(db.String(20), nullable=False)
-    is_main = db.Column(db.Boolean, default=False)
-    announcement_id = db.Column(db.Integer, db.ForeignKey('announcements.id'), nullable=False)
+    content = db.Column(db.Text)
+    image_url = db.Column(db.String(200))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    likes = db.relationship('Like', backref='post', lazy=True)
+    comments = db.relationship('Comment', backref='post', lazy=True)
 
 class Like(db.Model):
     __tablename__ = 'likes'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    announcement_id = db.Column(db.Integer, db.ForeignKey('announcements.id'), nullable=False)
-    is_like = db.Column(db.Boolean, nullable=False)  # True para like, False para dislike
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+
+class Comment(db.Model):
+    __tablename__ = 'comments'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    # Garantir que um usuário só pode dar um like ou dislike por anúncio
-    __table_args__ = (
-        db.UniqueConstraint('user_id', 'announcement_id', name='unique_user_announcement'),
-    )
-
-    def __repr__(self):
-        return f'<Like {self.id}: User {self.user_id} {"liked" if self.is_like else "disliked"} Announcement {self.announcement_id}>'
 
 with app.app_context():
     db.create_all()
 
 @app.route('/')
 def index():
-    announcements = Announcement.query.filter_by(is_active=True).order_by(Announcement.created_at.desc()).all()
-    return render_template('index.html', announcements=announcements)
-
-@app.route('/announcement/<int:announcement_id>')
-def view_announcement(announcement_id):
-    announcement = Announcement.query.get_or_404(announcement_id)
-    return render_template('announcement.html', announcement=announcement)
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        user = User.query.filter_by(email=email).first()
-        
-        if user and user.check_password(password):
-            session['user_id'] = user.id
-            session['user_name'] = user.name
-            session['is_admin'] = user.is_admin
-            flash('Login realizado com sucesso!')
-            return redirect(url_for('index'))
-        else:
-            flash('Email ou senha incorretos')
-    return render_template('login.html')
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    posts = Post.query.order_by(Post.created_at.desc()).all()
+    return render_template('index.html', posts=posts)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        try:
-            email = request.form.get('email')
-            name = request.form.get('name')
-            password = request.form.get('password')
-            phone = request.form.get('phone')
-            
-            logger.debug(f'Tentativa de cadastro: {email}, {name}')
-            
-            # Verificar se o email já existe
-            existing_user = User.query.filter(User.email == email).first()
-            if existing_user:
-                flash('Email já cadastrado')
-                return redirect(url_for('register'))
-            
-            # Criar novo usuário
-            user = User(email=email, name=name, phone=phone)
-            user.set_password(password)
-            
-            db.session.add(user)
-            db.session.commit()
-            
-            logger.debug(f'Usuário cadastrado com sucesso: {email}')
-            flash('Cadastro realizado com sucesso!')
-            return redirect(url_for('login'))
-            
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f'Erro no cadastro: {str(e)}')
-            flash(f'Erro ao realizar cadastro. Por favor, tente novamente.')
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        
+        if User.query.filter_by(username=username).first():
+            flash('Nome de usuário já existe')
             return redirect(url_for('register'))
+        
+        if User.query.filter_by(email=email).first():
+            flash('Email já cadastrado')
+            return redirect(url_for('register'))
+        
+        user = User(
+            username=username,
+            email=email,
+            password_hash=generate_password_hash(password)
+        )
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        flash('Cadastro realizado com sucesso!')
+        return redirect(url_for('login'))
     
     return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        user = User.query.filter_by(username=username).first()
+        
+        if user and check_password_hash(user.password_hash, password):
+            session['user_id'] = user.id
+            session['username'] = user.username
+            return redirect(url_for('index'))
+        
+        flash('Usuário ou senha inválidos')
+    
+    return render_template('login.html')
 
 @app.route('/logout')
 def logout():
     session.clear()
-    flash('Logout realizado com sucesso!')
-    return redirect(url_for('index'))
+    return redirect(url_for('login'))
 
-@app.route('/upload', methods=['GET', 'POST'])
-def upload():
+@app.route('/post', methods=['POST'])
+def create_post():
     if 'user_id' not in session:
-        flash('Faça login antes de criar um anúncio')
         return redirect(url_for('login'))
     
-    if request.method == 'GET':
-        return render_template('upload.html')
+    content = request.form.get('content')
+    image = request.files.get('image')
     
-    if 'images' not in request.files:
-        flash('Nenhuma imagem selecionada')
-        return redirect(url_for('upload'))
-    
-    files = request.files.getlist('images')
-    if not files or files[0].filename == '':
-        flash('Nenhuma imagem selecionada')
-        return redirect(url_for('upload'))
-    
-    if len(files) > 7:
-        flash('Você pode adicionar no máximo 7 imagens')
-        return redirect(url_for('upload'))
-    
-    try:
-        # Criar o anúncio
-        announcement = Announcement(
-            title=request.form['title'],
-            description=request.form['description'],
-            price=float(request.form['price']),
-            location=request.form['location'],
-            category=request.form['category'],
-            user_id=session['user_id']
-        )
-        db.session.add(announcement)
-        db.session.commit()
-        
-        # Adicionar as imagens
-        for i, file in enumerate(files):
-            image_data = process_image(file)
-            image_type = file.content_type
-            
-            new_image = Image(
-                image_data=image_data,
-                image_type=image_type,
-                is_main=(i == 0),  # Primeira imagem é a principal
-                announcement_id=announcement.id
-            )
-            db.session.add(new_image)
-        
-        db.session.commit()
-        flash('Anúncio criado com sucesso!')
-        return redirect(url_for('index'))
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Erro ao criar anúncio: {str(e)}')
-        return redirect(url_for('upload'))
-
-@app.route('/image/<int:image_id>')
-def get_image(image_id):
-    image = Image.query.get_or_404(image_id)
-    return send_file(
-        BytesIO(image.image_data),
-        mimetype=image.image_type,
-        as_attachment=False
+    post = Post(
+        user_id=session['user_id'],
+        content=content
     )
-
-@app.route('/delete/<int:announcement_id>', methods=['POST'])
-def delete_announcement(announcement_id):
-    announcement = Announcement.query.get_or_404(announcement_id)
-    password = request.form.get('password')
     
-    # Verificar se é o dono do anúncio ou se tem a senha de administrador
-    if session.get('user_id') == announcement.user_id or password == '4040':
-        db.session.delete(announcement)
+    if image:
+        filename = secure_filename(image.filename)
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        image.save(image_path)
+        post.image_url = filename
+    
+    db.session.add(post)
+    db.session.commit()
+    
+    return redirect(url_for('index'))
+
+@app.route('/like/<int:post_id>', methods=['POST'])
+def like_post(post_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Não autorizado'}), 401
+    
+    like = Like.query.filter_by(
+        user_id=session['user_id'],
+        post_id=post_id
+    ).first()
+    
+    if like:
+        db.session.delete(like)
         db.session.commit()
-        flash('Anúncio deletado com sucesso!')
-    else:
-        flash('Você não tem permissão para deletar este anúncio')
+        return jsonify({'action': 'unliked'})
+    
+    like = Like(user_id=session['user_id'], post_id=post_id)
+    db.session.add(like)
+    db.session.commit()
+    
+    return jsonify({'action': 'liked'})
+
+@app.route('/comment/<int:post_id>', methods=['POST'])
+def add_comment(post_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    content = request.form.get('content')
+    
+    comment = Comment(
+        user_id=session['user_id'],
+        post_id=post_id,
+        content=content
+    )
+    
+    db.session.add(comment)
+    db.session.commit()
     
     return redirect(url_for('index'))
 
 @app.route('/search')
 def search():
     query = request.args.get('q', '')
-    announcements = Announcement.query.filter(
-        (Announcement.title.contains(query)) | 
-        (Announcement.description.contains(query)) |
-        (Announcement.location.contains(query)) |
-        (Announcement.category.contains(query))
-    ).filter_by(is_active=True).all()
-    return render_template('index.html', announcements=announcements, query=query)
+    if query:
+        posts = Post.query.filter(Post.content.ilike(f'%{query}%')).all()
+    else:
+        posts = []
+    return render_template('search.html', posts=posts, query=query)
 
-@app.route('/like/<int:announcement_id>/<int:is_like>', methods=['POST'])
-def like_announcement(announcement_id, is_like):
-    if 'user_id' not in session:
-        flash('Faça login para curtir/não curtir')
-        return redirect(url_for('login'))
-    
-    try:
-        # Verificar se já existe uma curtida do usuário
-        existing_like = Like.query.filter_by(
-            user_id=session['user_id'],
-            announcement_id=announcement_id
-        ).first()
-        
-        if existing_like:
-            # Se já existe, atualizar o status
-            existing_like.is_like = bool(is_like)
-        else:
-            # Se não existe, criar nova curtida
-            new_like = Like(
-                user_id=session['user_id'],
-                announcement_id=announcement_id,
-                is_like=bool(is_like)
-            )
-            db.session.add(new_like)
-        
-        db.session.commit()
-        return jsonify({'success': True})
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f'Erro ao processar curtida: {str(e)}')
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/edit/<int:announcement_id>', methods=['GET', 'POST'])
-def edit_announcement(announcement_id):
-    if 'user_id' not in session:
-        flash('Faça login para editar anúncios')
-        return redirect(url_for('login'))
-    
-    announcement = Announcement.query.get_or_404(announcement_id)
-    
-    # Verificar se o usuário é o dono do anúncio
-    if announcement.user_id != session['user_id'] and not session.get('is_admin'):
-        flash('Você não tem permissão para editar este anúncio')
-        return redirect(url_for('index'))
-    
-    if request.method == 'POST':
-        try:
-            announcement.title = request.form['title']
-            announcement.description = request.form['description']
-            announcement.price = float(request.form['price'])
-            announcement.location = request.form['location']
-            announcement.category = request.form['category']
-            
-            # Processar novas imagens
-            if 'images' in request.files:
-                files = request.files.getlist('images')
-                if files and files[0].filename != '':
-                    # Remover imagens antigas
-                    for image in announcement.images:
-                        db.session.delete(image)
-                    
-                    # Adicionar novas imagens
-                    for i, file in enumerate(files):
-                        image_data = process_image(file)
-                        image_type = file.content_type
-                        
-                        new_image = Image(
-                            image_data=image_data,
-                            image_type=image_type,
-                            is_main=(i == 0),
-                            announcement_id=announcement.id
-                        )
-                        db.session.add(new_image)
-            
-            db.session.commit()
-            flash('Anúncio atualizado com sucesso!')
-            return redirect(url_for('view_announcement', announcement_id=announcement.id))
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Erro ao atualizar anúncio: {str(e)}')
-    
-    return render_template('edit.html', announcement=announcement)
-
-@app.route('/toggle_availability/<int:announcement_id>', methods=['POST'])
-def toggle_availability(announcement_id):
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Faça login para alterar a disponibilidade'}), 401
-    
-    announcement = Announcement.query.get_or_404(announcement_id)
-    
-    # Verificar se o usuário é o dono do anúncio
-    if announcement.user_id != session['user_id'] and not session.get('is_admin'):
-        return jsonify({'success': False, 'message': 'Você não tem permissão para alterar este anúncio'}), 403
-    
-    try:
-        announcement.is_available = not announcement.is_available
-        db.session.commit()
-        return jsonify({
-            'success': True,
-            'message': 'Status de disponibilidade atualizado',
-            'is_available': announcement.is_available
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@app.route('/admin/secret', methods=['GET', 'POST'])
-def admin_secret():
-    if request.method == 'POST':
-        password = request.form.get('password')
-        if password == '41313769p':
-            session['is_admin'] = True
-            flash('Acesso concedido!')
-            return redirect(url_for('admin_secret'))
-        else:
-            flash('Senha incorreta!')
-    
-    # Se não estiver autenticado, mostrar o formulário de senha
-    if not session.get('is_admin'):
-        return render_template('admin_login.html')
-    
-    # Se estiver autenticado, mostrar a lista de anúncios
-    announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
-    return render_template('admin_panel.html', announcements=announcements)
-
-@app.route('/admin/delete/<int:announcement_id>', methods=['POST'])
-def admin_delete(announcement_id):
-    if not session.get('is_admin'):
-        flash('Acesso negado!')
-        return redirect(url_for('index'))
-    
-    announcement = Announcement.query.get_or_404(announcement_id)
-    db.session.delete(announcement)
-    db.session.commit()
-    flash('Anúncio deletado com sucesso!')
-    return redirect(url_for('admin_secret'))
+@app.route('/random')
+def random_posts():
+    posts = Post.query.order_by(db.func.random()).limit(10).all()
+    return render_template('random.html', posts=posts)
 
 def process_image(file):
     try:

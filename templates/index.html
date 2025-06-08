@@ -1,274 +1,87 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anúncios</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .announcement-card {
-            height: 100%;
-            transition: transform 0.3s, box-shadow 0.3s;
-            border: none;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .announcement-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        .announcement-image {
-            height: 200px;
-            object-fit: cover;
-            border-radius: 8px 8px 0 0;
-        }
-        .price-tag {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-        .new-announcement-btn {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            z-index: 1000;
-        }
-        
-        .new-announcement-btn .btn {
-            padding: 15px 25px;
-            font-size: 1.2rem;
-            transition: all 0.3s ease;
-        }
-        
-        .new-announcement-btn .btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        }
-        
-        @media (max-width: 768px) {
-            .new-announcement-btn {
-                bottom: 20px;
-                right: 20px;
-            }
-            
-            .new-announcement-btn .btn {
-                padding: 12px;
-                font-size: 1.5rem;
-            }
-        }
-        .search-container {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-        .navbar {
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .unavailable-tag {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(255, 0, 0, 0.8);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="fas fa-store"></i> Anúncios
-            </a>
-            <div class="navbar-nav ms-auto">
-                {% if session.get('user_id') %}
-                    <a class="nav-link" href="{{ url_for('logout') }}">
-                        <i class="fas fa-sign-out-alt"></i> Sair
-                    </a>
-                {% else %}
-                    <a class="nav-link" href="{{ url_for('login') }}">
-                        <i class="fas fa-sign-in-alt"></i> Login
-                    </a>
-                    <a class="nav-link" href="{{ url_for('register') }}">
-                        <i class="fas fa-user-plus"></i> Cadastrar
-                    </a>
-                {% endif %}
-            </div>
-        </div>
-    </nav>
+{% extends "base.html" %}
 
-    <div class="container mt-4">
-        <div class="search-container">
-            <form action="{{ url_for('search') }}" method="get">
-                <div class="input-group">
-                    <input type="text" class="form-control" name="q" placeholder="Pesquisar anúncios..." value="{{ query }}">
-                    <button class="btn btn-primary" type="submit">
-                        <i class="fas fa-search"></i>
+{% block title %}Início - Rede Social{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <!-- Formulário de nova postagem -->
+        <div class="card post-card mb-4">
+            <div class="card-body">
+                <form action="{{ url_for('create_post') }}" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <textarea class="form-control" name="content" rows="3" placeholder="O que você está pensando?"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <input type="file" class="form-control" name="image" accept="image/*">
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i> Publicar
                     </button>
-                </div>
-            </form>
-        </div>
-
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-info">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <div class="row row-cols-1 row-cols-md-3 g-4">
-            {% for announcement in announcements %}
-                <div class="col">
-                    <div class="card announcement-card">
-                        {% if announcement.images %}
-                            <img src="{{ url_for('get_image', image_id=announcement.images[0].id) }}" 
-                                 class="card-img-top announcement-image" 
-                                 alt="{{ announcement.title }}">
-                        {% else %}
-                            <div class="card-img-top announcement-image bg-secondary d-flex align-items-center justify-content-center">
-                                <i class="fas fa-image fa-3x text-white"></i>
-                            </div>
-                        {% endif %}
-                        <div class="price-tag">
-                            R$ {{ "%.2f"|format(announcement.price) }}
-                        </div>
-                        {% if not announcement.is_available %}
-                            <div class="unavailable-tag">
-                                <i class="fas fa-times"></i> Indisponível
-                            </div>
-                        {% endif %}
-                        <div class="card-body">
-                            <h5 class="card-title">{{ announcement.title }}</h5>
-                            <p class="card-text text-primary fw-bold">R$ {{ "%.2f"|format(announcement.price) }}</p>
-                            <p class="card-text">
-                                <i class="fas fa-map-marker-alt"></i> {{ announcement.location }}
-                                <span class="mx-2">|</span>
-                                <i class="fas fa-tag"></i> {{ announcement.category }}
-                            </p>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div class="text-muted">
-                                    <small>
-                                        <i class="fas fa-thumbs-up text-primary"></i> {{ announcement.likes.filter_by(is_like=True).count() }}
-                                        <span class="mx-2">|</span>
-                                        <i class="fas fa-thumbs-down text-danger"></i> {{ announcement.likes.filter_by(is_like=False).count() }}
-                                    </small>
-                                </div>
-                                <a href="{{ url_for('view_announcement', announcement_id=announcement.id) }}" class="btn btn-outline-primary">
-                                    Ver Detalhes
-                                </a>
-                            </div>
-                            <div class="mt-2 d-flex gap-2">
-                                {% if session.get('user_id') == announcement.user_id %}
-                                    <button class="btn btn-danger delete-owner-btn" 
-                                            data-announcement-id="{{ announcement.id }}">
-                                        <i class="fas fa-trash"></i> Excluir Meu Anúncio
-                                    </button>
-                                {% endif %}
-                                {% if session.get('is_admin') %}
-                                    <button class="btn btn-danger delete-admin-btn" 
-                                            data-announcement-id="{{ announcement.id }}">
-                                        <i class="fas fa-trash"></i> Excluir (4040)
-                                    </button>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            {% else %}
-                <div class="col-12">
-                    <div class="alert alert-info">
-                        Nenhum anúncio encontrado.
-                    </div>
-                </div>
-            {% endfor %}
-        </div>
-    </div>
-
-    <div class="new-announcement-btn">
-        <a href="{{ url_for('upload') }}" class="btn btn-primary btn-lg rounded-circle shadow-lg" data-bs-toggle="tooltip" data-bs-placement="left" title="Criar um novo anúncio">
-            <i class="fas fa-plus"></i>
-            <span class="d-none d-md-inline ms-2">Novo Anúncio</span>
-        </a>
-    </div>
-
-    <!-- Modal de Confirmação de Exclusão -->
-    <div class="modal fade" id="deleteModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Confirmar Exclusão</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Tem certeza que deseja excluir este anúncio?</p>
-                    <form id="deleteForm" method="POST">
-                        <div class="mb-3">
-                            <label for="password" class="form-label">Senha de Administração (opcional)</label>
-                            <input type="password" class="form-control" id="password" name="password" placeholder="Digite a senha de administração se for um administrador">
-                            <small class="text-muted">Se você é o dono do anúncio, pode deixar em branco</small>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" form="deleteForm" class="btn btn-danger">Excluir</button>
-                </div>
+                </form>
             </div>
         </div>
+
+        <!-- Feed de postagens -->
+        {% for post in posts %}
+        <div class="card post-card">
+            <div class="card-header bg-white">
+                <div class="d-flex align-items-center">
+                    <img src="{{ post.author.profile_picture or url_for('static', filename='default_profile.png') }}" 
+                         class="profile-picture me-2" alt="Foto de perfil">
+                    <div>
+                        <h6 class="mb-0">{{ post.author.username }}</h6>
+                        <small class="text-muted">{{ post.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                </div>
+            </div>
+            {% if post.image_url %}
+            <img src="{{ url_for('static', filename='uploads/' + post.image_url) }}" 
+                 class="card-img-top post-image" alt="Imagem da postagem">
+            {% endif %}
+            <div class="card-body">
+                <p class="card-text">{{ post.content }}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="like-button me-2" onclick="likePost({{ post.id }})" id="like-{{ post.id }}">
+                            <i class="fas fa-heart {% if post.likes|selectattr('user_id', 'equalto', session.get('user_id'))|list %}active{% endif %}"></i>
+                            <span id="like-count-{{ post.id }}">{{ post.likes|length }}</span>
+                        </span>
+                        <span class="text-muted">
+                            <i class="fas fa-comment"></i> {{ post.comments|length }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <!-- Comentários -->
+            <div class="card-footer bg-white">
+                <form action="{{ url_for('add_comment', post_id=post.id) }}" method="post" class="mb-3">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="content" placeholder="Adicione um comentário...">
+                        <button class="btn btn-outline-primary" type="submit">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+                {% for comment in post.comments %}
+                <div class="d-flex mb-2">
+                    <img src="{{ comment.user.profile_picture or url_for('static', filename='default_profile.png') }}" 
+                         class="profile-picture me-2" style="width: 30px; height: 30px;" alt="Foto de perfil">
+                    <div class="bg-light rounded p-2 flex-grow-1">
+                        <strong>{{ comment.user.username }}</strong>
+                        <p class="mb-0">{{ comment.content }}</p>
+                        <small class="text-muted">{{ comment.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center">
+            <h4>Nenhuma postagem encontrada</h4>
+            <p>Seja o primeiro a compartilhar algo!</p>
+        </div>
+        {% endfor %}
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.querySelectorAll('.delete-admin-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const announcementId = this.dataset.announcementId;
-                if (confirm('Tem certeza que deseja excluir este anúncio?')) {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = `/delete/${announcementId}`;
-                    
-                    const passwordInput = document.createElement('input');
-                    passwordInput.type = 'hidden';
-                    passwordInput.name = 'password';
-                    passwordInput.value = '4040';
-                    
-                    form.appendChild(passwordInput);
-                    document.body.appendChild(form);
-                    form.submit();
-                }
-            });
-        });
-
-        document.querySelectorAll('.delete-owner-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const announcementId = this.dataset.announcementId;
-                if (confirm('Tem certeza que deseja excluir este anúncio?')) {
-                    const form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = `/delete/${announcementId}`;
-                    document.body.appendChild(form);
-                    form.submit();
-                }
-            });
-        });
-
-        // Inicializar tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
-        })
-    </script>
-</body>
-</html> 
+</div>
+{% endblock %} 
