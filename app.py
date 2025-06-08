@@ -71,18 +71,6 @@ class Comment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('Posts.id'), nullable=False)
 
-with app.app_context():
-    db.create_all()
-
-@app.route('/')
-def index():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    users = User.query.all()
-    posts = Post.query.order_by(Post.created_at.desc()).all()
-    return render_template('index.html', users=users, posts=posts)
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     try:
@@ -154,7 +142,7 @@ def login():
         
         if user and check_password_hash(user.password_hash, password):
             session['user_id'] = user.id
-            session['username'] = user.username
+            flash('Login realizado com sucesso!')
             return redirect(url_for('index'))
         
         flash('Usuário ou senha inválidos')
@@ -163,7 +151,8 @@ def login():
 
 @app.route('/logout')
 def logout():
-    session.clear()
+    session.pop('user_id', None)
+    flash('Logout realizado com sucesso!')
     return redirect(url_for('login'))
 
 @app.route('/post', methods=['POST'])
@@ -197,21 +186,22 @@ def like_post(post_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Não autorizado'}), 401
     
-    like = Like.query.filter_by(
+    post = Post.query.get_or_404(post_id)
+    existing_like = Like.query.filter_by(
         user_id=session['user_id'],
         post_id=post_id
     ).first()
     
-    if like:
-        db.session.delete(like)
-        db.session.commit()
-        return jsonify({'action': 'unliked'})
+    if existing_like:
+        db.session.delete(existing_like)
+        action = 'unliked'
+    else:
+        like = Like(user_id=session['user_id'], post_id=post_id)
+        db.session.add(like)
+        action = 'liked'
     
-    like = Like(user_id=session['user_id'], post_id=post_id)
-    db.session.add(like)
     db.session.commit()
-    
-    return jsonify({'action': 'liked'})
+    return jsonify({'action': action})
 
 @app.route('/comment/<int:post_id>', methods=['POST'])
 def add_comment(post_id):
@@ -233,20 +223,37 @@ def add_comment(post_id):
 
 @app.route('/search')
 def search():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
     query = request.args.get('q', '')
     if query:
         posts = Post.query.filter(Post.content.ilike(f'%{query}%')).all()
+        users = User.query.filter(User.username.ilike(f'%{query}%')).all()
     else:
         posts = []
-    return render_template('search.html', posts=posts, query=query)
+        users = []
+    
+    return render_template('search.html', posts=posts, users=users, query=query)
 
 @app.route('/random')
 def random_posts():
-    posts = Post.query.order_by(db.func.random()).limit(10).all()
-    return render_template('random.html', posts=posts)
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    posts = Post.query.all()
+    if posts:
+        random_post = random.choice(posts)
+        return redirect(url_for('user_profile', user_id=random_post.user_id))
+    
+    flash('Nenhum post encontrado')
+    return redirect(url_for('index'))
 
 @app.route('/user/<int:user_id>')
 def user_profile(user_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
     user = User.query.get_or_404(user_id)
     posts = Post.query.filter_by(user_id=user_id).order_by(Post.created_at.desc()).all()
     return render_template('user_profile.html', user=user, posts=posts)
@@ -352,4 +359,6 @@ def admin_delete(announcement_id):
     return redirect(url_for('admin_panel'))
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True) 
