@@ -38,7 +38,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 try:
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    logger.info(f'Pasta de uploads criada em: {UPLOAD_FOLDER}')
+        logger.info(f'Pasta de uploads criada em: {UPLOAD_FOLDER}')
 except Exception as e:
     logger.error(f'Erro ao criar pasta de uploads: {str(e)}')
 
@@ -130,8 +130,16 @@ def register():
                     return redirect(url_for('register'))
             else:
                 # Usar imagem padrão
-                with open(os.path.join(app.static_folder, 'default_profile.png'), 'rb') as f:
-                    img_byte_arr = f.read()
+                default_image_path = os.path.join(app.static_folder, 'default_profile.png')
+                if os.path.exists(default_image_path):
+                    with open(default_image_path, 'rb') as f:
+                        img_byte_arr = f.read()
+                else:
+                    # Criar uma imagem padrão em branco
+                    img = PILImage.new('RGB', (200, 200), color='gray')
+                    img_byte_arr = io.BytesIO()
+                    img.save(img_byte_arr, format='PNG')
+                    img_byte_arr = img_byte_arr.getvalue()
             
             user = User(
                 username=username,
