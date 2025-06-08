@@ -30,54 +30,57 @@ app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Configurar pasta de uploads
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
+
+# Criar pasta de uploads se não existir
+try:
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    logger.info(f'Pasta de uploads criada em: {UPLOAD_FOLDER}')
+except Exception as e:
+    logger.error(f'Erro ao criar pasta de uploads: {str(e)}')
 
 db = SQLAlchemy(app)
 
-# Criar pasta de uploads se não existir
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
 class User(db.Model):
-    __tablename__ = 'users'
+    __tablename__ = 'Usuários'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
-    profile_picture = db.Column(db.String(200))
-    bio = db.Column(db.Text)
+    password_hash = db.Column(db.String(128), nullable=False)
     location = db.Column(db.String(100))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    profile_picture = db.Column(db.LargeBinary)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
     posts = db.relationship('Post', backref='author', lazy=True)
 
 class Post(db.Model):
-    __tablename__ = 'posts'
+    __tablename__ = 'Posts'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    content = db.Column(db.Text)
+    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id', ondelete='CASCADE'), nullable=False)
+    content = db.Column(db.Text, nullable=False)
     image_url = db.Column(db.String(200))
-    price = db.Column(db.Float)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    likes = db.relationship('Like', backref='post', lazy=True)
-    comments = db.relationship('Comment', backref='post', lazy=True)
+    price = db.Column(db.Numeric(10, 2))
+    created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
+    likes = db.relationship('Like', backref='post', lazy=True, cascade='all, delete-orphan')
+    comments = db.relationship('Comment', backref='post', lazy=True, cascade='all, delete-orphan')
 
 class Like(db.Model):
-    __tablename__ = 'likes'
+    __tablename__ = 'Gosta'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id', ondelete='CASCADE'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('Posts.id', ondelete='CASCADE'), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
+    __table_args__ = (db.UniqueConstraint('user_id', 'post_id'),)
 
 class Comment(db.Model):
-    __tablename__ = 'comments'
+    __tablename__ = 'Comentários'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id', ondelete='CASCADE'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('Posts.id', ondelete='CASCADE'), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
 
 with app.app_context():
     db.create_all()
@@ -112,21 +115,30 @@ def register():
             profile_picture = request.files.get('profile_picture')
             if profile_picture and profile_picture.filename:
                 try:
-                    filename = secure_filename(profile_picture.filename)
-                    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                    profile_picture.save(file_path)
+                    # Ler a imagem como bytes
+                    image_bytes = profile_picture.read()
+                    # Redimensionar a imagem se necessário
+                    img = PILImage.open(io.BytesIO(image_bytes))
+                    img.thumbnail((200, 200))  # Redimensionar para 200x200
+                    # Converter de volta para bytes
+                    img_byte_arr = io.BytesIO()
+                    img.save(img_byte_arr, format=img.format)
+                    img_byte_arr = img_byte_arr.getvalue()
                 except Exception as e:
-                    logger.error(f'Erro ao salvar arquivo: {str(e)}')
-                    filename = 'default_profile.png'
+                    logger.error(f'Erro ao processar imagem: {str(e)}')
+                    flash('Erro ao processar a imagem. Por favor, tente novamente.')
+                    return redirect(url_for('register'))
             else:
-                filename = 'default_profile.png'
+                # Usar imagem padrão
+                with open(os.path.join(app.static_folder, 'default_profile.png'), 'rb') as f:
+                    img_byte_arr = f.read()
             
             user = User(
                 username=username,
                 email=email,
                 password_hash=generate_password_hash(password),
                 location=location,
-                profile_picture=filename
+                profile_picture=img_byte_arr
             )
             
             db.session.add(user)
@@ -247,6 +259,19 @@ def user_profile(user_id):
     user = User.query.get_or_404(user_id)
     posts = Post.query.filter_by(user_id=user_id).order_by(Post.created_at.desc()).all()
     return render_template('user_profile.html', user=user, posts=posts)
+
+@app.route('/profile_image/<int:user_id>')
+def profile_image(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.profile_picture:
+        return send_file(
+            io.BytesIO(user.profile_picture),
+            mimetype='image/jpeg'
+        )
+    return send_file(
+        os.path.join(app.static_folder, 'default_profile.png'),
+        mimetype='image/png'
+    )
 
 def process_image(file):
     try:

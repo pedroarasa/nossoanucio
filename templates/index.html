@@ -14,7 +14,7 @@
                 {% for user in users %}
                 <div class="user-card mb-3" onclick="window.location.href='{{ url_for('user_profile', user_id=user.id) }}'">
                     <div class="d-flex align-items-center">
-                        <img src="{{ user.profile_picture or url_for('static', filename='default_profile.png') }}" 
+                        <img src="{{ url_for('profile_image', user_id=user.id) }}" 
                              class="user-profile-picture me-3" alt="Foto de perfil">
                         <div>
                             <h6 class="mb-0">{{ user.username }}</h6>
