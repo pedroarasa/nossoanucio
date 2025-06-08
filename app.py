@@ -29,19 +29,6 @@ if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Configurar pasta de uploads
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
-
-# Criar pasta de uploads se não existir
-try:
-    if not os.path.exists(UPLOAD_FOLDER):
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-        logger.info(f'Pasta de uploads criada em: {UPLOAD_FOLDER}')
-except Exception as e:
-    logger.error(f'Erro ao criar pasta de uploads: {str(e)}')
-
 db = SQLAlchemy(app)
 
 class User(db.Model):
@@ -49,38 +36,40 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
-    location = db.Column(db.String(100))
+    password_hash = db.Column(db.String(128))
     profile_picture = db.Column(db.LargeBinary)
-    created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
+    bio = db.Column(db.Text)
+    location = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     posts = db.relationship('Post', backref='author', lazy=True)
+    likes = db.relationship('Like', backref='user', lazy=True)
+    comments = db.relationship('Comment', backref='user', lazy=True)
 
 class Post(db.Model):
     __tablename__ = 'Posts'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id', ondelete='CASCADE'), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    image_url = db.Column(db.String(200))
-    price = db.Column(db.Numeric(10, 2))
-    created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
-    likes = db.relationship('Like', backref='post', lazy=True, cascade='all, delete-orphan')
-    comments = db.relationship('Comment', backref='post', lazy=True, cascade='all, delete-orphan')
+    image_data = db.Column(db.LargeBinary)
+    price = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id'), nullable=False)
+    likes = db.relationship('Like', backref='post', lazy=True)
+    comments = db.relationship('Comment', backref='post', lazy=True)
 
 class Like(db.Model):
     __tablename__ = 'Gosta'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id', ondelete='CASCADE'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('Posts.id', ondelete='CASCADE'), nullable=False)
-    created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
-    __table_args__ = (db.UniqueConstraint('user_id', 'post_id'),)
+    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('Posts.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Comment(db.Model):
     __tablename__ = 'Comentários'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id', ondelete='CASCADE'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('Posts.id', ondelete='CASCADE'), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('Posts.id'), nullable=False)
 
 with app.app_context():
     db.create_all()
@@ -111,15 +100,15 @@ def register():
                 flash('Email já cadastrado')
                 return redirect(url_for('register'))
             
-            # Salvar foto de perfil
+            # Processar foto de perfil
             profile_picture = request.files.get('profile_picture')
             if profile_picture and profile_picture.filename:
                 try:
                     # Ler a imagem como bytes
                     image_bytes = profile_picture.read()
-                    # Redimensionar a imagem se necessário
+                    # Redimensionar a imagem
                     img = PILImage.open(io.BytesIO(image_bytes))
-                    img.thumbnail((200, 200))  # Redimensionar para 200x200
+                    img.thumbnail((200, 200))
                     # Converter de volta para bytes
                     img_byte_arr = io.BytesIO()
                     img.save(img_byte_arr, format=img.format)
@@ -129,17 +118,11 @@ def register():
                     flash('Erro ao processar a imagem. Por favor, tente novamente.')
                     return redirect(url_for('register'))
             else:
-                # Usar imagem padrão
-                default_image_path = os.path.join(app.static_folder, 'default_profile.png')
-                if os.path.exists(default_image_path):
-                    with open(default_image_path, 'rb') as f:
-                        img_byte_arr = f.read()
-                else:
-                    # Criar uma imagem padrão em branco
-                    img = PILImage.new('RGB', (200, 200), color='gray')
-                    img_byte_arr = io.BytesIO()
-                    img.save(img_byte_arr, format='PNG')
-                    img_byte_arr = img_byte_arr.getvalue()
+                # Criar uma imagem padrão em branco
+                img = PILImage.new('RGB', (200, 200), color='gray')
+                img_byte_arr = io.BytesIO()
+                img.save(img_byte_arr, format='PNG')
+                img_byte_arr = img_byte_arr.getvalue()
             
             user = User(
                 username=username,
@@ -276,52 +259,56 @@ def profile_image(user_id):
             io.BytesIO(user.profile_picture),
             mimetype='image/jpeg'
         )
-    return send_file(
-        os.path.join(app.static_folder, 'default_profile.png'),
-        mimetype='image/png'
-    )
+    return send_file('static/default_profile.png')
 
-def process_image(file):
+@app.route('/post_image/<int:post_id>')
+def post_image(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.image_data:
+        return send_file(
+            io.BytesIO(post.image_data),
+            mimetype='image/jpeg'
+        )
+    return send_file('static/default_post.png')
+
+@app.route('/create_post', methods=['POST'])
+def create_post():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
     try:
-        # Lista de formatos de imagem suportados
-        supported_formats = ['JPEG', 'PNG', 'GIF', 'BMP', 'TIFF', 'WEBP', 'HEIC']
+        content = request.form['content']
+        price = float(request.form['price'])
+        image = request.files.get('image')
         
-        # Abrir a imagem
-        img = PILImage.open(file)
+        if not image:
+            flash('Por favor, selecione uma imagem')
+            return redirect(url_for('index'))
         
-        # Corrigir a orientação da imagem
-        if hasattr(img, '_getexif'):
-            exif = img._getexif()
-            if exif is not None:
-                orientation = exif.get(274)
-                if orientation == 3:
-                    img = img.rotate(180, expand=True)
-                elif orientation == 6:
-                    img = img.rotate(270, expand=True)
-                elif orientation == 8:
-                    img = img.rotate(90, expand=True)
-        
-        # Redimensionar a imagem se for muito grande
-        max_size = (1920, 1920)
-        img.thumbnail(max_size, PILImage.LANCZOS)
-        
-        # Verificar se o formato é suportado
-        if img.format not in supported_formats:
-            # Converter para JPEG se o formato não for suportado
-            img = img.convert('RGB')
-            format_to_save = 'JPEG'
-        else:
-            format_to_save = img.format
-        
-        # Converter para bytes
+        # Processar imagem
+        image_bytes = image.read()
+        img = PILImage.open(io.BytesIO(image_bytes))
+        img.thumbnail((800, 800))  # Redimensionar para 800x800
         img_byte_arr = io.BytesIO()
-        img.save(img_byte_arr, format=format_to_save, quality=85, optimize=True)
+        img.save(img_byte_arr, format=img.format)
         img_byte_arr = img_byte_arr.getvalue()
         
-        return img_byte_arr
+        post = Post(
+            content=content,
+            price=price,
+            image_data=img_byte_arr,
+            user_id=session['user_id']
+        )
+        
+        db.session.add(post)
+        db.session.commit()
+        
+        flash('Anúncio publicado com sucesso!')
     except Exception as e:
-        logger.error(f'Erro ao processar imagem: {str(e)}')
-        raise
+        logger.error(f'Erro ao criar post: {str(e)}')
+        flash('Erro ao publicar anúncio')
+    
+    return redirect(url_for('index'))
 
 # Adicionar handler de erro
 @app.errorhandler(500)

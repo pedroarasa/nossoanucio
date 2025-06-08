@@ -58,7 +58,7 @@
         <div class="card mb-4">
             <div class="card-header bg-white">
                 <div class="d-flex align-items-center">
-                    <img src="{{ post.author.profile_picture or url_for('static', filename='default_profile.png') }}" 
+                    <img src="{{ url_for('profile_image', user_id=post.author.id) }}" 
                          class="user-profile-picture me-3" alt="Foto de perfil">
                     <div>
                         <h6 class="mb-0">{{ post.author.username }}</h6>
@@ -68,9 +68,9 @@
                     </div>
                 </div>
             </div>
-            {% if post.image_url %}
+            {% if post.image_data %}
             <div class="position-relative">
-                <img src="{{ url_for('static', filename='uploads/' + post.image_url) }}" 
+                <img src="{{ url_for('post_image', post_id=post.id) }}" 
                      class="card-img-top" style="max-height: 400px; object-fit: cover;" alt="Imagem do anúncio">
                 <div class="price-tag">
                     € {{ "%.2f"|format(post.price) }}
@@ -106,7 +106,7 @@
                 </form>
                 {% for comment in post.comments %}
                 <div class="d-flex mb-2">
-                    <img src="{{ comment.user.profile_picture or url_for('static', filename='default_profile.png') }}" 
+                    <img src="{{ url_for('profile_image', user_id=comment.user.id) }}" 
                          class="user-profile-picture me-2" style="width: 30px; height: 30px;" alt="Foto de perfil">
                     <div class="bg-light rounded p-2 flex-grow-1">
                         <strong>{{ comment.user.username }}</strong>
