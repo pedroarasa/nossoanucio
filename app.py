@@ -94,7 +94,7 @@ def index():
         return render_template('index.html', posts=posts, users=users)
     except Exception as e:
         flash('Erro ao carregar a página. Por favor, tente novamente.')
-        return redirect(url_for('index'))
+        return render_template('index.html', posts=[], users=[])
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -106,12 +106,14 @@ def login():
         
         if user and check_password_hash(user.password, password):
             session['user_id'] = user.id
+            session['username'] = user.username
             session['is_admin'] = user.is_admin
             flash('Login realizado com sucesso!')
             return redirect(url_for('index'))
-        
-        flash('Usuário ou senha inválidos')
-    
+        else:
+            flash('Usuário ou senha inválidos')
+            return redirect(url_for('login'))
+            
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -153,10 +155,9 @@ def register():
 
 @app.route('/logout')
 def logout():
-    session.pop('user_id', None)
-    session.pop('is_admin', None)
+    session.clear()
     flash('Logout realizado com sucesso!')
-    return redirect(url_for('login'))
+    return redirect(url_for('index'))
 
 # Rotas de conteúdo
 @app.route('/create_post', methods=['POST'])
