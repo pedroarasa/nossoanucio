@@ -160,7 +160,7 @@ def process_image(image_data, max_size=(800, 800)):
         return output.getvalue()
     except Exception as e:
         app.logger.error(f"Erro ao processar imagem: {str(e)}")
-        return image_data  # Retorna a imagem original em caso de erro
+        return image_data
 
 def login_required(f):
     @wraps(f)
@@ -319,12 +319,13 @@ def profile_image(user_id):
         if user.profile_picture:
             return send_file(
                 io.BytesIO(user.profile_picture),
-                mimetype='image/jpeg'
+                mimetype='image/jpeg',
+                cache_timeout=0
             )
-        return send_file('static/img/default_profile.png', mimetype='image/png')
+        return send_file('static/img/default_profile.png', mimetype='image/png', cache_timeout=0)
     except Exception as e:
         app.logger.error(f"Erro ao carregar imagem do perfil: {str(e)}")
-        return send_file('static/img/default_profile.png', mimetype='image/png')
+        return send_file('static/img/default_profile.png', mimetype='image/png', cache_timeout=0)
 
 @app.route('/post_image/<int:photo_id>')
 def post_image(photo_id):
@@ -343,8 +344,8 @@ def post_image(photo_id):
 @app.route('/user/<int:user_id>')
 def user_profile(user_id):
     user = User.query.get_or_404(user_id)
-    posts = Post.query.filter_by(user_id=user_id).order_by(Post.created_at.desc()).all()
-    return render_template('user_profile.html', user=user, posts=posts)
+    user_posts = Post.query.filter_by(user_id=user_id).order_by(Post.created_at.desc()).all()
+    return render_template('user_profile.html', user=user, posts=user_posts)
 
 @app.route('/post/<int:post_id>/delete', methods=['POST'])
 def delete_post(post_id):
@@ -483,9 +484,11 @@ def upload_profile_picture():
     
     if file and allowed_file(file.filename):
         try:
+            # Ler e processar a imagem
             image_data = file.read()
-            processed_image = process_image(image_data)
+            processed_image = process_image(image_data, max_size=(200, 200))
             
+            # Atualizar a foto do usuário
             user = User.query.get(session['user_id'])
             user.profile_picture = processed_image
             db.session.commit()
