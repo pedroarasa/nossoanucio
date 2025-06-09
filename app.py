@@ -11,6 +11,7 @@ import io
 import logging
 import random
 from dotenv import load_dotenv
+from sqlalchemy import or_
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -266,18 +267,19 @@ def user_profile(user_id):
 
 @app.route('/search')
 def search():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
     query = request.args.get('q', '')
     if query:
-        posts = Post.query.filter(Post.content.ilike(f'%{query}%')).all()
-        users = User.query.filter(User.username.ilike(f'%{query}%')).all()
+        # Busca por texto no conteúdo do anúncio
+        posts = Post.query.filter(
+            db.or_(
+                Post.content.ilike(f'%{query}%'),
+                User.username.ilike(f'%{query}%'),
+                User.location.ilike(f'%{query}%')
+            )
+        ).order_by(Post.created_at.desc()).all()
     else:
         posts = []
-        users = []
-    
-    return render_template('search.html', posts=posts, users=users, query=query)
+    return render_template('search.html', posts=posts)
 
 @app.route('/random')
 def random_posts():

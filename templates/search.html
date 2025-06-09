@@ -1,50 +1,101 @@
 {% extends "base.html" %}
 
-{% block title %}Pesquisa - Rede Social{% endblock %}
+{% block title %}Buscar Anúncios{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-8 mx-auto">
-        <h3 class="mb-4">Resultados da pesquisa: "{{ query }}"</h3>
-        
-        {% if posts %}
-            {% for post in posts %}
-            <div class="card post-card">
-                <div class="card-header bg-white">
-                    <div class="d-flex align-items-center">
-                        <img src="{{ post.author.profile_picture or url_for('static', filename='default_profile.png') }}" 
-                             class="profile-picture me-2" alt="Foto de perfil">
-                        <div>
-                            <h6 class="mb-0">{{ post.author.username }}</h6>
-                            <small class="text-muted">{{ post.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
-                        </div>
-                    </div>
-                </div>
-                {% if post.image_url %}
-                <img src="{{ url_for('static', filename='uploads/' + post.image_url) }}" 
-                     class="card-img-top post-image" alt="Imagem da postagem">
-                {% endif %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card mb-4">
                 <div class="card-body">
-                    <p class="card-text">{{ post.content }}</p>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <span class="like-button me-2" onclick="likePost({{ post.id }})" id="like-{{ post.id }}">
-                                <i class="fas fa-heart {% if post.likes|selectattr('user_id', 'equalto', session.get('user_id'))|list %}active{% endif %}"></i>
-                                <span id="like-count-{{ post.id }}">{{ post.likes|length }}</span>
-                            </span>
-                            <span class="text-muted">
-                                <i class="fas fa-comment"></i> {{ post.comments|length }}
-                            </span>
+                    <h4 class="mb-4">Buscar Anúncios</h4>
+                    <form action="{{ url_for('search') }}" method="get" class="mb-4">
+                        <div class="input-group">
+                            <input type="text" name="q" class="form-control" placeholder="Digite o que você está procurando..." value="{{ request.args.get('q', '') }}">
+                            <button class="btn btn-primary" type="submit">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
                         </div>
-                    </div>
+                    </form>
+
+                    {% if request.args.get('q') %}
+                        {% if posts %}
+                            <h5 class="mb-3">Resultados para "{{ request.args.get('q') }}"</h5>
+                            <div class="row">
+                                {% for post in posts %}
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100">
+                                        <div class="card-header bg-white">
+                                            <div class="d-flex align-items-center">
+                                                <img src="{{ url_for('profile_image', user_id=post.author.id) }}" 
+                                                     class="user-profile-picture me-3" alt="Foto de perfil">
+                                                <div>
+                                                    <h6 class="mb-0">{{ post.author.username }}</h6>
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-map-marker-alt"></i> {{ post.author.location }}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        {% if post.photos %}
+                                        <div class="position-relative">
+                                            <div id="carousel-{{ post.id }}" class="carousel slide" data-bs-ride="carousel">
+                                                <div class="carousel-inner">
+                                                    {% for photo in post.photos %}
+                                                    <div class="carousel-item {% if photo.is_main %}active{% endif %}">
+                                                        <img src="{{ url_for('post_image', photo_id=photo.id) }}" 
+                                                             class="card-img-top" style="height: 200px; object-fit: cover;" alt="Imagem do anúncio">
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                                {% if post.photos|length > 1 %}
+                                                <button class="carousel-control-prev" type="button" data-bs-target="#carousel-{{ post.id }}" data-bs-slide="prev">
+                                                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                                    <span class="visually-hidden">Anterior</span>
+                                                </button>
+                                                <button class="carousel-control-next" type="button" data-bs-target="#carousel-{{ post.id }}" data-bs-slide="next">
+                                                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                                    <span class="visually-hidden">Próximo</span>
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                            <div class="price-tag">
+                                                € {{ "%.2f"|format(post.price) }}
+                                            </div>
+                                            <div class="location-tag">
+                                                <i class="fas fa-map-marker-alt"></i> {{ post.author.location }}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <div class="card-body">
+                                            <p class="card-text">{{ post.content }}</p>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <span class="text-muted me-2">
+                                                        <i class="fas fa-heart"></i> {{ post.likes|length }}
+                                                    </span>
+                                                    <span class="text-muted">
+                                                        <i class="fas fa-comment"></i> {{ post.comments|length }}
+                                                    </span>
+                                                </div>
+                                                <small class="text-muted">{{ post.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> Nenhum anúncio encontrado para "{{ request.args.get('q') }}".
+                            </div>
+                        {% endif %}
+                    {% endif %}
                 </div>
             </div>
-            {% endfor %}
-        {% else %}
-            <div class="alert alert-info">
-                Nenhuma postagem encontrada para "{{ query }}"
-            </div>
-        {% endif %}
+        </div>
     </div>
 </div>
 {% endblock %} 

@@ -11,16 +11,18 @@
             background-color: #f8f9fa;
         }
         .navbar {
-            background: linear-gradient(135deg, #6B8DD6 0%, #4A6FDC 100%);
-            padding: 1rem;
+            background-color: #343a40 !important;
+            padding: 1rem 0;
         }
         .navbar-brand {
-            color: white !important;
             font-weight: bold;
+            color: white !important;
             font-size: 1.5rem;
         }
         .nav-link {
             color: rgba(255, 255, 255, 0.8) !important;
+            font-size: 1.1rem;
+            padding: 0.5rem 1rem !important;
         }
         .nav-link:hover {
             color: white !important;
@@ -56,72 +58,146 @@
         .btn-announcement {
             background-color: #28a745;
             color: white;
-            border: none;
-            padding: 0.5rem 1.5rem;
-            border-radius: 20px;
-            transition: all 0.3s ease;
         }
         .btn-announcement:hover {
             background-color: #218838;
             color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         .user-card {
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.3s ease;
+            padding: 10px;
+            border-radius: 8px;
         }
         .user-card:hover {
             background-color: #f8f9fa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .user-profile-picture {
             width: 50px;
             height: 50px;
             object-fit: cover;
             border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .carousel-item img {
+            width: 100%;
+            height: 500px;
+            object-fit: cover;
+            object-position: center;
+        }
+        .carousel {
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .carousel-control-prev,
+        .carousel-control-next {
+            width: 10%;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .carousel:hover .carousel-control-prev,
+        .carousel:hover .carousel-control-next {
+            opacity: 0.8;
         }
         .price-tag {
             position: absolute;
-            top: 10px;
-            right: 10px;
+            top: 20px;
+            right: 20px;
             background: rgba(0, 0, 0, 0.7);
             color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
+            padding: 8px 16px;
+            border-radius: 8px;
             font-weight: bold;
+            font-size: 1.2rem;
+            z-index: 2;
         }
         .location-tag {
             position: absolute;
-            bottom: 10px;
-            right: 10px;
+            bottom: 20px;
+            right: 20px;
             background: rgba(0, 0, 0, 0.7);
             color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 1rem;
+            z-index: 2;
         }
         .like-button {
             cursor: pointer;
             color: #dc3545;
+            transition: transform 0.2s ease;
+        }
+        .like-button:hover {
+            transform: scale(1.1);
         }
         .like-button.active {
             color: #dc3545;
         }
         .btn-view-all {
-            background-color: #007bff;
+            background-color: #ff6b6b;
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            transition: background-color 0.2s;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin: 0 10px;
         }
         .btn-view-all:hover {
-            background-color: #0056b3;
+            background-color: #ff5252;
             color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+        }
+        .btn-view-all i {
+            margin-right: 8px;
+        }
+        .navbar-nav {
+            align-items: center;
+        }
+        .main-nav-item {
+            margin: 0 5px;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        .card-body {
+            padding: 1.5rem;
+        }
+        .comment-section {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .comment-input {
+            border-radius: 20px;
+            padding: 0.5rem 1rem;
+        }
+        .comment-button {
+            border-radius: 20px;
+            padding: 0.5rem 1.5rem;
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+    <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-store"></i> Anúncios
@@ -131,60 +207,60 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
+                    <li class="nav-item main-nav-item">
                         <a class="nav-link" href="{{ url_for('index') }}">
                             <i class="fas fa-home"></i> Início
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('announcements') }}">
+                    <li class="nav-item main-nav-item">
+                        <a class="btn btn-view-all" href="{{ url_for('announcements') }}">
                             <i class="fas fa-list"></i> Ver Todos os Anúncios
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item main-nav-item">
                         <a class="nav-link" href="{{ url_for('search') }}">
                             <i class="fas fa-search"></i> Buscar
                         </a>
                     </li>
-                    <li class="nav-item">
+                    <li class="nav-item main-nav-item">
                         <a class="nav-link" href="{{ url_for('random_posts') }}">
                             <i class="fas fa-random"></i> Anúncio Aleatório
                         </a>
                     </li>
                 </ul>
-                <div class="d-flex">
+                <ul class="navbar-nav">
                     {% if session.get('user_id') %}
-                    <a class="nav-link btn btn-announcement me-2" href="{{ url_for('index') }}">
-                        <i class="fas fa-plus"></i> Novo Anúncio
-                    </a>
-                    <a class="nav-link btn btn-login" href="{{ url_for('logout') }}">
-                        <i class="fas fa-sign-out-alt"></i> Sair
-                    </a>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}">
+                            <i class="fas fa-sign-out-alt"></i> Sair
+                        </a>
+                    </li>
                     {% else %}
-                    <a class="nav-link btn btn-login me-2" href="{{ url_for('login') }}">
-                        <i class="fas fa-sign-in-alt"></i> Entrar
-                    </a>
-                    <a class="nav-link btn btn-register" href="{{ url_for('register') }}">
-                        <i class="fas fa-user-plus"></i> Cadastrar
-                    </a>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">
+                            <i class="fas fa-sign-in-alt"></i> Entrar
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('register') }}">
+                            <i class="fas fa-user-plus"></i> Cadastrar
+                        </a>
+                    </li>
                     {% endif %}
-                </div>
+                </ul>
             </div>
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container mt-4">
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
-                    <div class="alert alert-info alert-dismissible fade show" role="alert">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                    <div class="alert alert-info">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
-
+        
         {% block content %}{% endblock %}
     </div>
 
