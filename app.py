@@ -199,22 +199,36 @@ def create_post():
 @app.route('/post/<int:post_id>/like', methods=['POST'])
 def like_post(post_id):
     if 'user_id' not in session:
-        return {'error': 'Não autorizado'}, 401
+        return jsonify({'error': 'Usuário não está logado'}), 401
     
-    like = Like.query.filter_by(
-        user_id=session['user_id'],
-        post_id=post_id
-    ).first()
+    post = Post.query.get_or_404(post_id)
+    user_id = session['user_id']
+    
+    # Verifica se já existe like
+    like = Like.query.filter_by(user_id=user_id, post_id=post_id).first()
     
     if like:
+        # Remove o like
         db.session.delete(like)
-        db.session.commit()
-        return {'action': 'unliked'}
+        action = 'unliked'
+    else:
+        # Remove dislike se existir
+        dislike = Dislike.query.filter_by(user_id=user_id, post_id=post_id).first()
+        if dislike:
+            db.session.delete(dislike)
+        
+        # Adiciona o like
+        like = Like(user_id=user_id, post_id=post_id)
+        db.session.add(like)
+        action = 'liked'
     
-    like = Like(user_id=session['user_id'], post_id=post_id)
-    db.session.add(like)
     db.session.commit()
-    return {'action': 'liked'}
+    
+    return jsonify({
+        'action': action,
+        'likes_count': len(post.likes),
+        'dislikes_count': len(post.dislikes)
+    })
 
 @app.route('/post/<int:post_id>/comment', methods=['POST'])
 def add_comment(post_id):
@@ -382,6 +396,11 @@ def dislike_post(post_id):
         db.session.delete(dislike)
         action = 'undisliked'
     else:
+        # Remove like se existir
+        like = Like.query.filter_by(user_id=user_id, post_id=post_id).first()
+        if like:
+            db.session.delete(like)
+        
         # Adiciona o dislike
         dislike = Dislike(user_id=user_id, post_id=post_id)
         db.session.add(dislike)
@@ -391,6 +410,7 @@ def dislike_post(post_id):
     
     return jsonify({
         'action': action,
+        'likes_count': len(post.likes),
         'dislikes_count': len(post.dislikes)
     })
 

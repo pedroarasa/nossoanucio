@@ -47,12 +47,28 @@
             background-color: #0b5ed7;
             color: white;
         }
-        .like-button {
+        .like-button, .dislike-button {
             cursor: pointer;
             color: #6c757d;
+            transition: all 0.2s ease;
+            padding: 5px 10px;
+            border-radius: 20px;
+            background-color: #f8f9fa;
+        }
+        .like-button:hover, .dislike-button:hover {
+            transform: scale(1.1);
+            background-color: #e9ecef;
         }
         .like-button.active {
             color: #dc3545;
+            background-color: #ffe6e6;
+        }
+        .dislike-button.active {
+            color: #6c757d;
+            background-color: #e9ecef;
+        }
+        .like-button i, .dislike-button i {
+            margin-right: 5px;
         }
         .price-tag {
             position: absolute;
