@@ -30,9 +30,12 @@ class User(db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    posts = db.relationship('Post', backref='author', lazy=True)
-    likes = db.relationship('Like', backref='user', lazy=True)
-    comments = db.relationship('Comment', backref='user', lazy=True)
+    # Relacionamentos
+    user_posts = db.relationship('Post', back_populates='post_user', lazy=True)
+    user_likes = db.relationship('Like', back_populates='like_user', lazy=True)
+    user_dislikes = db.relationship('Dislike', back_populates='dislike_user', lazy=True)
+    user_comments = db.relationship('Comment', back_populates='comment_user', lazy=True)
+    user_curriculos = db.relationship('Curriculo', back_populates='curriculo_user', lazy=True)
 
 class Post(db.Model):
     __tablename__ = 'posts'
@@ -42,11 +45,12 @@ class Post(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    post_user = db.relationship('User', backref=db.backref('user_posts', lazy=True))
-    post_photos = db.relationship('Photo', backref='photo_post', lazy=True, cascade='all, delete-orphan')
-    post_likes = db.relationship('Like', backref='like_post', lazy=True, cascade='all, delete-orphan')
-    post_dislikes = db.relationship('Dislike', backref='dislike_post', lazy=True, cascade='all, delete-orphan')
-    post_comments = db.relationship('Comment', backref='comment_post', lazy=True, cascade='all, delete-orphan')
+    # Relacionamentos
+    post_user = db.relationship('User', back_populates='user_posts')
+    post_photos = db.relationship('Photo', back_populates='photo_post', lazy=True, cascade='all, delete-orphan')
+    post_likes = db.relationship('Like', back_populates='like_post', lazy=True, cascade='all, delete-orphan')
+    post_dislikes = db.relationship('Dislike', back_populates='dislike_post', lazy=True, cascade='all, delete-orphan')
+    post_comments = db.relationship('Comment', back_populates='comment_post', lazy=True, cascade='all, delete-orphan')
 
 class Photo(db.Model):
     __tablename__ = 'fotos_anuncio'
@@ -55,6 +59,9 @@ class Photo(db.Model):
     image_data = db.Column(db.LargeBinary, nullable=False)
     is_main = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relacionamentos
+    photo_post = db.relationship('Post', back_populates='post_photos')
 
 class Like(db.Model):
     __tablename__ = 'gosta'
@@ -63,7 +70,9 @@ class Like(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    like_user = db.relationship('User', backref=db.backref('user_likes', lazy=True))
+    # Relacionamentos
+    like_user = db.relationship('User', back_populates='user_likes')
+    like_post = db.relationship('Post', back_populates='post_likes')
     __table_args__ = (db.UniqueConstraint('user_id', 'post_id'),)
 
 class Dislike(db.Model):
@@ -73,7 +82,9 @@ class Dislike(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    dislike_user = db.relationship('User', backref=db.backref('user_dislikes', lazy=True))
+    # Relacionamentos
+    dislike_user = db.relationship('User', back_populates='user_dislikes')
+    dislike_post = db.relationship('Post', back_populates='post_dislikes')
     __table_args__ = (db.UniqueConstraint('user_id', 'post_id'),)
 
 class Comment(db.Model):
@@ -84,7 +95,9 @@ class Comment(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    comment_user = db.relationship('User', backref=db.backref('user_comments', lazy=True))
+    # Relacionamentos
+    comment_user = db.relationship('User', back_populates='user_comments')
+    comment_post = db.relationship('Post', back_populates='post_comments')
 
 class Curriculo(db.Model):
     __tablename__ = 'curriculos'
@@ -102,7 +115,8 @@ class Curriculo(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    curriculo_user = db.relationship('User', backref=db.backref('user_curriculos', lazy=True))
+    # Relacionamentos
+    curriculo_user = db.relationship('User', back_populates='user_curriculos')
 
 def process_image(image_data, max_size=(800, 800)):
     img = PILImage.open(io.BytesIO(image_data))
