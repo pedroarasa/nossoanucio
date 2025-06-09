@@ -12,7 +12,7 @@
             </div>
             <div class="card-body">
                 {% for user in users %}
-                <div class="user-card mb-3" onclick="window.location.href='{{ url_for('user_profile', user_id=user.id) }}'">
+                <div class="user-card mb-3" onclick="window.location.href='{{ url_for('user_profile', user_id=user.id) }}';">
                     <div class="d-flex align-items-center">
                         <img src="{{ url_for('profile_image', user_id=user.id) }}" 
                              class="user-profile-picture me-3" alt="Foto de perfil">
@@ -84,7 +84,7 @@
                 <p class="card-text">{{ post.content }}</p>
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <span class="like-button me-2" onclick="likePost({{ post.id }})" id="like-{{ post.id }}">
+                        <span class="like-button me-2" onclick="likePost({{ post.id }});" id="like-{{ post.id }}">
                             <i class="fas fa-heart {% if post.likes|selectattr('user_id', 'equalto', session.get('user_id'))|list %}active{% endif %}"></i>
                             <span id="like-count-{{ post.id }}">{{ post.likes|length }}</span>
                         </span>

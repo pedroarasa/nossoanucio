@@ -7,77 +7,117 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        body {
+            background-color: #f8f9fa;
+        }
         .navbar {
-            background: linear-gradient(135deg, #2c3e50, #3498db) !important;
+            background: linear-gradient(135deg, #6B8DD6 0%, #4A6FDC 100%);
+            padding: 1rem;
+        }
+        .navbar-brand {
+            color: white !important;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+        .nav-link {
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
+        .nav-link:hover {
+            color: white !important;
         }
         .btn-login {
-            background-color: #e74c3c;
-            border-color: #e74c3c;
+            background-color: #28a745;
             color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            transition: all 0.3s ease;
         }
         .btn-login:hover {
-            background-color: #c0392b;
-            border-color: #c0392b;
+            background-color: #218838;
             color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         .btn-register {
-            background-color: #27ae60;
-            border-color: #27ae60;
+            background-color: #dc3545;
             color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            transition: all 0.3s ease;
         }
         .btn-register:hover {
-            background-color: #219a52;
-            border-color: #219a52;
+            background-color: #c82333;
             color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         .btn-announcement {
-            background-color: #f39c12;
-            border-color: #f39c12;
+            background-color: #17a2b8;
             color: white;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            transition: all 0.3s ease;
         }
         .btn-announcement:hover {
-            background-color: #d35400;
-            border-color: #d35400;
+            background-color: #138496;
             color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         .user-card {
-            transition: transform 0.3s;
             cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 10px;
+            border-radius: 10px;
         }
         .user-card:hover {
-            transform: translateY(-5px);
+            background-color: #f8f9fa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         .user-profile-picture {
-            width: 100px;
-            height: 100px;
-            object-fit: cover;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
-            border: 3px solid #3498db;
+            object-fit: cover;
         }
         .price-tag {
             position: absolute;
             top: 10px;
             right: 10px;
-            background: rgba(0,0,0,0.7);
+            background-color: rgba(40, 167, 69, 0.9);
             color: white;
             padding: 5px 10px;
-            border-radius: 5px;
+            border-radius: 20px;
             font-weight: bold;
         }
         .location-tag {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(52, 152, 219, 0.8);
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
             color: white;
             padding: 5px 10px;
-            border-radius: 5px;
-            font-weight: bold;
+            border-radius: 20px;
+        }
+        .like-button {
+            cursor: pointer;
+            color: #dc3545;
+            transition: all 0.3s ease;
+        }
+        .like-button:hover {
+            transform: scale(1.1);
+        }
+        .like-button.active {
+            color: #dc3545;
         }
     </style>
 </head>
-<body class="bg-light">
-    <nav class="navbar navbar-expand-lg navbar-dark">
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="fas fa-store"></i> Anúncios
@@ -88,45 +128,49 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     {% if session.get('user_id') %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('index') }}">
-                                <i class="fas fa-home"></i> Início
-                            </a>
-                        </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">
+                            <i class="fas fa-home"></i> Início
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('search') }}">
+                            <i class="fas fa-search"></i> Buscar
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('random_posts') }}">
+                            <i class="fas fa-random"></i> Aleatório
+                        </a>
+                    </li>
                     {% endif %}
                 </ul>
-                <form class="d-flex me-3" action="{{ url_for('search') }}" method="get">
-                    <input class="form-control me-2" type="search" name="q" placeholder="Pesquisar...">
-                    <button class="btn btn-outline-light" type="submit">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </form>
-                <div class="navbar-nav">
+                <div class="d-flex">
                     {% if session.get('user_id') %}
-                        <a class="nav-link btn btn-announcement me-2" href="{{ url_for('upload') }}">
-                            <i class="fas fa-plus"></i> Novo Anúncio
-                        </a>
-                        <a class="nav-link btn btn-login" href="{{ url_for('logout') }}">
-                            <i class="fas fa-sign-out-alt"></i> Sair
-                        </a>
+                    <a class="nav-link btn btn-announcement me-2" href="{{ url_for('index') }}">
+                        <i class="fas fa-plus"></i> Novo Anúncio
+                    </a>
+                    <a class="nav-link btn btn-login" href="{{ url_for('logout') }}">
+                        <i class="fas fa-sign-out-alt"></i> Sair
+                    </a>
                     {% else %}
-                        <a class="nav-link btn btn-login me-2" href="{{ url_for('login') }}">
-                            <i class="fas fa-sign-in-alt"></i> Login
-                        </a>
-                        <a class="nav-link btn btn-register" href="{{ url_for('register') }}">
-                            <i class="fas fa-user-plus"></i> Cadastrar
-                        </a>
+                    <a class="nav-link btn btn-login me-2" href="{{ url_for('login') }}">
+                        <i class="fas fa-sign-in-alt"></i> Entrar
+                    </a>
+                    <a class="nav-link btn btn-register" href="{{ url_for('register') }}">
+                        <i class="fas fa-user-plus"></i> Cadastrar
+                    </a>
                     {% endif %}
                 </div>
             </div>
         </div>
     </nav>
 
-    <div class="container mt-4">
+    <div class="container">
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
-                    <div class="alert alert-info alert-dismissible fade show">
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
                         {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
