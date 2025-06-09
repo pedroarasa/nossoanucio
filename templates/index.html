@@ -43,7 +43,10 @@
                             <input type="number" class="form-control" name="price" step="0.01" placeholder="Preço em €" required>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <input type="file" class="form-control" name="image" accept="image/*" required>
+                            <input type="file" class="form-control" name="images" accept="image/*" multiple required 
+                                   onchange="validateFiles(this)" id="imageInput">
+                            <small class="text-muted">Selecione até 10 imagens. A primeira será a imagem principal.</small>
+                            <div id="fileError" class="text-danger mt-1" style="display: none;"></div>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-announcement">
@@ -81,10 +84,28 @@
                     {% endif %}
                 </div>
             </div>
-            {% if post.image_data %}
+            {% if post.photos %}
             <div class="position-relative">
-                <img src="{{ url_for('post_image', post_id=post.id) }}" 
-                     class="card-img-top" style="max-height: 400px; object-fit: cover;" alt="Imagem do anúncio">
+                <div id="carousel-{{ post.id }}" class="carousel slide" data-bs-ride="carousel">
+                    <div class="carousel-inner">
+                        {% for photo in post.photos %}
+                        <div class="carousel-item {% if photo.is_main %}active{% endif %}">
+                            <img src="{{ url_for('post_image', photo_id=photo.id) }}" 
+                                 class="card-img-top" style="max-height: 400px; object-fit: cover;" alt="Imagem do anúncio">
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if post.photos|length > 1 %}
+                    <button class="carousel-control-prev" type="button" data-bs-target="#carousel-{{ post.id }}" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Anterior</span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#carousel-{{ post.id }}" data-bs-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="visually-hidden">Próximo</span>
+                    </button>
+                    {% endif %}
+                </div>
                 <div class="price-tag">
                     € {{ "%.2f"|format(post.price) }}
                 </div>
@@ -148,6 +169,21 @@
 </div>
 
 <script>
+function validateFiles(input) {
+    const maxFiles = 10;
+    const errorDiv = document.getElementById('fileError');
+    
+    if (input.files.length > maxFiles) {
+        errorDiv.textContent = `Você pode selecionar no máximo ${maxFiles} imagens.`;
+        errorDiv.style.display = 'block';
+        input.value = ''; // Limpa a seleção
+        return false;
+    }
+    
+    errorDiv.style.display = 'none';
+    return true;
+}
+
 function likePost(postId) {
     fetch(`/post/${postId}/like`, {
         method: 'POST',

@@ -45,12 +45,20 @@ class Post(db.Model):
     __tablename__ = 'posts'
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
-    image_data = db.Column(db.LargeBinary)
     price = db.Column(db.Float, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
     likes = db.relationship('Like', backref='post', lazy=True)
     comments = db.relationship('Comment', backref='post', lazy=True)
+    photos = db.relationship('PostPhoto', backref='post', lazy=True)
+
+class PostPhoto(db.Model):
+    __tablename__ = 'fotos_anuncio'
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    image_data = db.Column(db.LargeBinary, nullable=False)
+    is_main = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Like(db.Model):
     __tablename__ = 'gosta'
@@ -163,42 +171,48 @@ def logout():
     return redirect(url_for('login'))
 
 # Rotas de conteúdo
-@app.route('/post/new', methods=['POST'])
+@app.route('/create_post', methods=['POST'])
 def create_post():
     if 'user_id' not in session:
         flash('Você precisa estar logado para criar um anúncio!')
         return redirect(url_for('login'))
     
-    try:
-        content = request.form['content']
-        price = float(request.form['price'])
-        image = request.files.get('image')
-        
-        if not image:
-            flash('É necessário enviar uma imagem!')
-            return redirect(url_for('index'))
-        
-        image_data = image.read()
-        processed_image = process_image(image_data)
-        if not processed_image:
-            flash('Erro ao processar a imagem')
-            return redirect(url_for('index'))
-        
-        post = Post(
-            content=content,
-            price=price,
-            image_data=processed_image,
-            user_id=session['user_id']
-        )
-        
-        db.session.add(post)
-        db.session.commit()
-        
-        flash('Anúncio publicado com sucesso!')
-    except Exception as e:
-        logger.error(f'Erro ao criar post: {str(e)}')
-        flash('Erro ao publicar anúncio')
+    content = request.form['content']
+    price = float(request.form['price'])
+    images = request.files.getlist('images')
     
+    if not images:
+        flash('É necessário enviar pelo menos uma imagem!')
+        return redirect(url_for('index'))
+    
+    # Verifica o limite de 10 imagens
+    if len(images) > 10:
+        flash('Você pode enviar no máximo 10 imagens por anúncio!')
+        return redirect(url_for('index'))
+    
+    post = Post(
+        content=content,
+        price=price,
+        user_id=session['user_id']
+    )
+    db.session.add(post)
+    db.session.flush()  # Para obter o ID do post
+    
+    # Processa e salva as imagens
+    for i, image in enumerate(images):
+        if image:
+            image_data = image.read()
+            processed_image = process_image(image_data)
+            if processed_image:
+                photo = PostPhoto(
+                    post_id=post.id,
+                    image_data=processed_image,
+                    is_main=(i == 0)  # A primeira imagem é a principal
+                )
+                db.session.add(photo)
+    
+    db.session.commit()
+    flash('Anúncio publicado com sucesso!')
     return redirect(url_for('index'))
 
 @app.route('/post/<int:post_id>/like', methods=['POST'])
@@ -310,15 +324,21 @@ def profile_image(user_id):
         )
     return send_file('static/default_profile.png')
 
-@app.route('/post_image/<int:post_id>')
-def post_image(post_id):
-    post = Post.query.get_or_404(post_id)
-    if post.image_data:
-        return send_file(
-            io.BytesIO(post.image_data),
-            mimetype='image/jpeg'
-        )
-    return send_file('static/default_post.png')
+@app.route('/post_image/<int:photo_id>')
+def post_image(photo_id):
+    photo = PostPhoto.query.get_or_404(photo_id)
+    return send_file(
+        io.BytesIO(photo.image_data),
+        mimetype='image/jpeg'
+    )
+
+@app.route('/post/<int:post_id>/photos')
+def get_post_photos(post_id):
+    photos = PostPhoto.query.filter_by(post_id=post_id).all()
+    return jsonify([{
+        'id': photo.id,
+        'is_main': photo.is_main
+    } for photo in photos])
 
 @app.route('/update_profile', methods=['POST'])
 def update_profile():
