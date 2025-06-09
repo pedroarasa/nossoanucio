@@ -1,2 +1,2 @@
 web: gunicorn app:app
-release: python reset_db.py 
+release: python update_db.py 
