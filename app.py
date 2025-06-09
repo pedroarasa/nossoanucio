@@ -79,12 +79,12 @@ class Comment(db.Model):
 class Dislike(db.Model):
     __tablename__ = 'dislikes'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('usuários.id'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    user = db.relationship('User', backref='dislikes')
-    post = db.relationship('Post', backref='dislikes')
+    user = db.relationship('User', backref=db.backref('dislikes', lazy=True))
+    post = db.relationship('Post', backref=db.backref('dislikes', lazy=True))
 
 def process_image(image_data, max_size=(800, 800)):
     img = PILImage.open(io.BytesIO(image_data))
@@ -381,11 +381,6 @@ def dislike_post(post_id):
     
     post = Post.query.get_or_404(post_id)
     user_id = session['user_id']
-    
-    # Remove like se existir
-    like = Like.query.filter_by(user_id=user_id, post_id=post_id).first()
-    if like:
-        db.session.delete(like)
     
     # Verifica se já existe dislike
     dislike = Dislike.query.filter_by(user_id=user_id, post_id=post_id).first()

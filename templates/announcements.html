@@ -155,17 +155,10 @@ function dislikePost(postId) {
     .then(data => {
         const dislikeButton = document.querySelector(`#dislike-${postId}`);
         const dislikeCount = document.querySelector(`#dislike-count-${postId}`);
-        const likeButton = document.querySelector(`#like-${postId}`);
         
         if (data.action === 'disliked') {
             dislikeButton.classList.add('active');
             dislikeCount.textContent = parseInt(dislikeCount.textContent) + 1;
-            // Remove like se existir
-            if (likeButton.classList.contains('active')) {
-                likeButton.classList.remove('active');
-                document.querySelector(`#like-count-${postId}`).textContent = 
-                    parseInt(document.querySelector(`#like-count-${postId}`).textContent) - 1;
-            }
         } else {
             dislikeButton.classList.remove('active');
             dislikeCount.textContent = parseInt(dislikeCount.textContent) - 1;
