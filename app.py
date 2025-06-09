@@ -12,6 +12,7 @@ import logging
 import random
 from dotenv import load_dotenv
 from sqlalchemy import or_
+from sqlalchemy.sql import text
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -29,62 +30,62 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 db = SQLAlchemy(app)
 
 class User(db.Model):
-    __tablename__ = 'Usuários'
+    __tablename__ = 'usuários'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
+    password = db.Column(db.String(120), nullable=False)
     location = db.Column(db.String(100))
     profile_picture = db.Column(db.LargeBinary)
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
     posts = db.relationship('Post', backref='author', lazy=True)
+    likes = db.relationship('Like', backref='user', lazy=True)
+    dislikes = db.relationship('Dislike', backref='user', lazy=True)
+    comments = db.relationship('Comment', backref='user', lazy=True)
 
 class Post(db.Model):
-    __tablename__ = 'Posts'
+    __tablename__ = 'posts'
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     price = db.Column(db.Float, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    photos = db.relationship('PostPhoto', backref='post', lazy=True)
-    likes = db.relationship('Like', backref='post', lazy=True)
-    comments = db.relationship('Comment', backref='post', lazy=True)
-    dislikes = db.relationship('Dislike', backref='post', lazy=True)
+    
+    photos = db.relationship('PostPhoto', backref='post', lazy=True, cascade='all, delete-orphan')
+    likes = db.relationship('Like', backref='post', lazy=True, cascade='all, delete-orphan')
+    dislikes = db.relationship('Dislike', backref='post', lazy=True, cascade='all, delete-orphan')
+    comments = db.relationship('Comment', backref='post', lazy=True, cascade='all, delete-orphan')
 
 class PostPhoto(db.Model):
     __tablename__ = 'fotos_anuncio'
     id = db.Column(db.Integer, primary_key=True)
-    post_id = db.Column(db.Integer, db.ForeignKey('Posts.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
     image_data = db.Column(db.LargeBinary, nullable=False)
     is_main = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Like(db.Model):
-    __tablename__ = 'Gosta'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('Posts.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-class Comment(db.Model):
-    __tablename__ = 'Comentários'
-    id = db.Column(db.Integer, primary_key=True)
-    content = db.Column(db.Text, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('Posts.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    user = db.relationship('User', backref='comments')
-
-class Dislike(db.Model):
-    __tablename__ = 'dislikes'
+    __tablename__ = 'gosta'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    user = db.relationship('User', backref=db.backref('dislikes', lazy=True))
-    post = db.relationship('Post', backref=db.backref('dislikes', lazy=True))
+
+class Dislike(db.Model):
+    __tablename__ = 'nao_gosta'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Comment(db.Model):
+    __tablename__ = 'comentarios'
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 def process_image(image_data, max_size=(800, 800)):
     img = PILImage.open(io.BytesIO(image_data))
@@ -125,16 +126,11 @@ def login():
 def register():
     if request.method == 'POST':
         username = request.form['username']
-        email = request.form['email']
         password = request.form['password']
         location = request.form['location']
         
         if User.query.filter_by(username=username).first():
             flash('Nome de usuário já existe')
-            return redirect(url_for('register'))
-        
-        if User.query.filter_by(email=email).first():
-            flash('Email já cadastrado')
             return redirect(url_for('register'))
         
         profile_picture = None
@@ -145,7 +141,6 @@ def register():
         
         user = User(
             username=username,
-            email=email,
             password=generate_password_hash(password),
             location=location,
             profile_picture=profile_picture,
@@ -402,7 +397,29 @@ def dislike_post(post_id):
         'dislikes_count': len(post.dislikes)
     })
 
-if __name__ == '__main__':
+# Função para criar as tabelas
+def create_tables():
     with app.app_context():
-        db.create_all()  # Apenas cria as tabelas se não existirem
+        # Primeiro, remove todas as tabelas existentes
+        db.drop_all()
+        # Depois, cria todas as tabelas novamente
+        db.create_all()
+        print("Tabelas criadas com sucesso!")
+
+# Função para atualizar as tabelas existentes
+def update_tables():
+    with app.app_context():
+        # Adiciona a coluna is_admin se não existir
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(text("ALTER TABLE usuários ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE"))
+                conn.commit()
+            print("Coluna is_admin adicionada com sucesso!")
+        except Exception as e:
+            print(f"Erro ao adicionar coluna is_admin: {e}")
+
+if __name__ == '__main__':
+    # Escolha uma das opções:
+    # create_tables()  # Para criar todas as tabelas do zero
+    # update_tables()  # Para atualizar tabelas existentes
     app.run(debug=True) 
