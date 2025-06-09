@@ -100,7 +100,7 @@
                         {% for photo in post.post_photos %}
                         <div class="carousel-item {% if photo.is_main %}active{% endif %}">
                             <img src="{{ url_for('post_image', photo_id=photo.id) }}" 
-                                 class="card-img-top" style="max-height: 400px; object-fit: cover;" alt="Imagem do anúncio">
+                                 class="post-image" alt="Imagem do anúncio">
                         </div>
                         {% endfor %}
                     </div>
@@ -165,7 +165,7 @@
                 {% for comment in post.post_comments %}
                 <div class="d-flex mb-2">
                     <img src="{{ url_for('profile_image', user_id=comment.comment_user.id) }}" 
-                         class="user-profile-picture me-2" style="width: 30px; height: 30px;" alt="Foto de perfil">
+                         class="comment-avatar me-2" alt="Foto de perfil">
                     <div class="bg-light rounded p-2 flex-grow-1">
                         <strong>{{ comment.comment_user.username }}</strong>
                         <p class="mb-0">{{ comment.content }}</p>
