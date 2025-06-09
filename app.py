@@ -7,6 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from PIL import Image as PILImage
 from dotenv import load_dotenv
 from sqlalchemy import or_
+from functools import wraps
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -107,6 +108,15 @@ def process_image(image_data, max_size=(800, 800)):
     output = io.BytesIO()
     img.save(output, format='JPEG', quality=85)
     return output.getvalue()
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Por favor, faça login para acessar esta página.', 'warning')
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/')
 def index():
