@@ -38,7 +38,6 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128))
     profile_picture = db.Column(db.LargeBinary)
-    bio = db.Column(db.Text)
     location = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     posts = db.relationship('Post', backref='author', lazy=True)
@@ -305,5 +304,5 @@ def post_image(post_id):
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
+        db.create_all()  # Apenas cria as tabelas se não existirem
     app.run(debug=True) 
