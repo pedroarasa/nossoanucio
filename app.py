@@ -365,6 +365,11 @@ def update_profile():
     flash('Perfil atualizado com sucesso!')
     return redirect(url_for('user_profile', user_id=user.id))
 
+@app.route('/announcements')
+def announcements():
+    posts = Post.query.order_by(Post.created_at.desc()).all()
+    return render_template('announcements.html', posts=posts)
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()  # Apenas cria as tabelas se não existirem
