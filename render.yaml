@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: nosso-anuncio
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+    healthCheckPath: /
+    autoDeploy: true
+    disk:
+      name: logs
+      mountPath: /opt/render/project/src/logs
+      sizeGB: 1
+    logging:
+      level: INFO
+      format: json
+      retention: 7d
+      destinations:
+        - type: file
+          path: /opt/render/project/src/logs/app.log
+          maxSize: 10MB
+          maxFiles: 5
+        - type: stdout
+          format: json 

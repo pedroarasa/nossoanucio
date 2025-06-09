@@ -13,19 +13,51 @@ import random
 from dotenv import load_dotenv
 from sqlalchemy import or_
 from sqlalchemy.sql import text
+from logging.handlers import RotatingFileHandler
+import sys
+
+# Configuração de Logging
+def setup_logger():
+    # Cria o diretório de logs se não existir
+    if not os.path.exists('logs'):
+        os.makedirs('logs')
+    
+    # Configura o logger principal
+    logger = logging.getLogger('app')
+    logger.setLevel(logging.INFO)
+    
+    # Formato do log
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # Handler para arquivo com rotação
+    file_handler = RotatingFileHandler(
+        'logs/app.log',
+        maxBytes=1024 * 1024,  # 1MB
+        backupCount=10
+    )
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    
+    # Handler para console
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+    
+    return logger
+
+# Inicializa o logger
+logger = setup_logger()
 
 # Carregar variáveis de ambiente
 load_dotenv()
 
-# Configurar logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave_secreta_123')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://neondb_owner:YOUR_PASSWORD@ep-cool-forest-a5f6f8f8.us-east-2.aws.neon.tech/neondb')
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave-secreta-padrao')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 
 db = SQLAlchemy(app)
 
@@ -94,15 +126,34 @@ def process_image(image_data, max_size=(800, 800)):
     img.save(output, format='JPEG', quality=85)
     return output.getvalue()
 
+# Função para log de erros
+def log_error(error, context=None):
+    error_msg = f"Erro: {str(error)}"
+    if context:
+        error_msg += f" | Contexto: {context}"
+    logger.error(error_msg)
+
+# Função para log de ações do usuário
+def log_user_action(action, user_id=None, details=None):
+    log_msg = f"Ação: {action}"
+    if user_id:
+        log_msg += f" | Usuário: {user_id}"
+    if details:
+        log_msg += f" | Detalhes: {details}"
+    logger.info(log_msg)
+
 # Rotas de autenticação
 @app.route('/')
 def index():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    posts = Post.query.order_by(Post.created_at.desc()).all()
-    users = User.query.all()
-    return render_template('index.html', posts=posts, users=users)
+    try:
+        posts = Post.query.order_by(Post.created_at.desc()).all()
+        users = User.query.all()
+        log_user_action('Página inicial acessada', session.get('user_id'))
+        return render_template('index.html', posts=posts, users=users)
+    except Exception as e:
+        log_error(e, 'Erro ao carregar página inicial')
+        flash('Erro ao carregar a página. Por favor, tente novamente.')
+        return redirect(url_for('index'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -125,33 +176,40 @@ def login():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        location = request.form['location']
-        
-        if User.query.filter_by(username=username).first():
-            flash('Nome de usuário já existe')
+        try:
+            username = request.form['username']
+            password = request.form['password']
+            location = request.form['location']
+            
+            if User.query.filter_by(username=username).first():
+                log_user_action('Tentativa de registro com username existente', None, username)
+                flash('Nome de usuário já existe')
+                return redirect(url_for('register'))
+            
+            profile_picture = None
+            if 'profile_picture' in request.files:
+                file = request.files['profile_picture']
+                if file.filename:
+                    profile_picture = process_image(file.read())
+            
+            user = User(
+                username=username,
+                password=generate_password_hash(password),
+                location=location,
+                profile_picture=profile_picture
+            )
+            
+            db.session.add(user)
+            db.session.commit()
+            
+            log_user_action('Novo usuário registrado', user.id, username)
+            flash('Registro realizado com sucesso!')
+            return redirect(url_for('login'))
+            
+        except Exception as e:
+            log_error(e, 'Erro no registro de usuário')
+            flash('Erro ao registrar. Por favor, tente novamente.')
             return redirect(url_for('register'))
-        
-        profile_picture = None
-        if 'profile_picture' in request.files:
-            file = request.files['profile_picture']
-            if file and file.filename:
-                profile_picture = process_image(file.read())
-        
-        user = User(
-            username=username,
-            password=generate_password_hash(password),
-            location=location,
-            profile_picture=profile_picture,
-            is_admin=(username == 'dono@dono')
-        )
-        
-        db.session.add(user)
-        db.session.commit()
-        
-        flash('Cadastro realizado com sucesso!')
-        return redirect(url_for('login'))
     
     return render_template('register.html')
 
@@ -419,7 +477,9 @@ def update_tables():
             print(f"Erro ao adicionar coluna is_admin: {e}")
 
 if __name__ == '__main__':
-    # Escolha uma das opções:
-    # create_tables()  # Para criar todas as tabelas do zero
-    # update_tables()  # Para atualizar tabelas existentes
-    app.run(debug=True) 
+    try:
+        logger.info('Iniciando aplicação...')
+        app.run(debug=True)
+    except Exception as e:
+        log_error(e, 'Erro ao iniciar aplicação')
+        raise 
