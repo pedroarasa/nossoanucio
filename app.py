@@ -21,13 +21,9 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave_secreta_123')
-
-# Configuração do banco de dados Neon
-DATABASE_URL = os.getenv('DATABASE_URL')
-if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/rede_social')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 db = SQLAlchemy(app)
 
@@ -39,6 +35,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(128))
     profile_picture = db.Column(db.LargeBinary)
     location = db.Column(db.String(100))
+    is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     posts = db.relationship('Post', backref='author', lazy=True)
     likes = db.relationship('Like', backref='user', lazy=True)
@@ -49,7 +46,7 @@ class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     image_data = db.Column(db.LargeBinary)
-    price = db.Column(db.Float)
+    price = db.Column(db.Float, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id'), nullable=False)
     likes = db.relationship('Like', backref='post', lazy=True)
@@ -69,6 +66,17 @@ class Comment(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('Posts.id'), nullable=False)
+
+def process_image(image_data, max_size=(800, 800)):
+    try:
+        img = PILImage.open(io.BytesIO(image_data))
+        img.thumbnail(max_size)
+        output = io.BytesIO()
+        img.save(output, format='JPEG', quality=85)
+        return output.getvalue()
+    except Exception as e:
+        print(f"Erro ao processar imagem: {e}")
+        return None
 
 # Rotas de autenticação
 @app.route('/')
@@ -90,6 +98,7 @@ def login():
         
         if user and check_password_hash(user.password_hash, password):
             session['user_id'] = user.id
+            session['is_admin'] = user.is_admin
             flash('Login realizado com sucesso!')
             return redirect(url_for('index'))
         
@@ -99,68 +108,57 @@ def login():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    try:
-        if request.method == 'POST':
-            username = request.form['username']
-            email = request.form['email']
-            password = request.form['password']
-            location = request.form['location']
-            
-            if User.query.filter_by(username=username).first():
-                flash('Nome de usuário já existe')
-                return redirect(url_for('register'))
-            
-            if User.query.filter_by(email=email).first():
-                flash('Email já cadastrado')
-                return redirect(url_for('register'))
-            
-            # Processar foto de perfil
-            profile_picture = request.files.get('profile_picture')
-            if profile_picture and profile_picture.filename:
-                try:
-                    # Ler a imagem como bytes
-                    image_bytes = profile_picture.read()
-                    # Redimensionar a imagem
-                    img = PILImage.open(io.BytesIO(image_bytes))
-                    img.thumbnail((200, 200))
-                    # Converter de volta para bytes
-                    img_byte_arr = io.BytesIO()
-                    img.save(img_byte_arr, format=img.format)
-                    img_byte_arr = img_byte_arr.getvalue()
-                except Exception as e:
-                    logger.error(f'Erro ao processar imagem: {str(e)}')
-                    flash('Erro ao processar a imagem. Por favor, tente novamente.')
-                    return redirect(url_for('register'))
-            else:
-                # Criar uma imagem padrão em branco
-                img = PILImage.new('RGB', (200, 200), color='gray')
-                img_byte_arr = io.BytesIO()
-                img.save(img_byte_arr, format='PNG')
-                img_byte_arr = img_byte_arr.getvalue()
-            
-            user = User(
-                username=username,
-                email=email,
-                password_hash=generate_password_hash(password),
-                location=location,
-                profile_picture=img_byte_arr
-            )
-            
-            db.session.add(user)
-            db.session.commit()
-            
-            flash('Cadastro realizado com sucesso!')
-            return redirect(url_for('login'))
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+        location = request.form['location']
         
-        return render_template('register.html')
-    except Exception as e:
-        logger.error(f'Erro no registro: {str(e)}')
-        flash('Erro ao realizar cadastro. Por favor, tente novamente.')
-        return redirect(url_for('register'))
+        if User.query.filter_by(username=username).first():
+            flash('Nome de usuário já existe')
+            return redirect(url_for('register'))
+        
+        if User.query.filter_by(email=email).first():
+            flash('Email já cadastrado')
+            return redirect(url_for('register'))
+        
+        profile_picture = request.files.get('profile_picture')
+        if profile_picture:
+            image_data = profile_picture.read()
+            processed_image = process_image(image_data, max_size=(200, 200))
+            if processed_image:
+                image_data = processed_image
+        else:
+            # Criar uma imagem padrão em branco
+            img = PILImage.new('RGB', (200, 200), color='gray')
+            img_byte_arr = io.BytesIO()
+            img.save(img_byte_arr, format='PNG')
+            image_data = img_byte_arr.getvalue()
+        
+        # Verifica se é o usuário admin
+        is_admin = username == 'dono@dono'
+        
+        user = User(
+            username=username,
+            email=email,
+            password_hash=generate_password_hash(password),
+            location=location,
+            profile_picture=image_data,
+            is_admin=is_admin
+        )
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        flash('Cadastro realizado com sucesso!')
+        return redirect(url_for('login'))
+    
+    return render_template('register.html')
 
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
+    session.pop('is_admin', None)
     flash('Logout realizado com sucesso!')
     return redirect(url_for('login'))
 
@@ -168,6 +166,7 @@ def logout():
 @app.route('/post/new', methods=['POST'])
 def create_post():
     if 'user_id' not in session:
+        flash('Você precisa estar logado para criar um anúncio!')
         return redirect(url_for('login'))
     
     try:
@@ -176,21 +175,19 @@ def create_post():
         image = request.files.get('image')
         
         if not image:
-            flash('Por favor, selecione uma imagem')
+            flash('É necessário enviar uma imagem!')
             return redirect(url_for('index'))
         
-        # Processar imagem
-        image_bytes = image.read()
-        img = PILImage.open(io.BytesIO(image_bytes))
-        img.thumbnail((800, 800))  # Redimensionar para 800x800
-        img_byte_arr = io.BytesIO()
-        img.save(img_byte_arr, format=img.format)
-        img_byte_arr = img_byte_arr.getvalue()
+        image_data = image.read()
+        processed_image = process_image(image_data)
+        if not processed_image:
+            flash('Erro ao processar a imagem')
+            return redirect(url_for('index'))
         
         post = Post(
             content=content,
             price=price,
-            image_data=img_byte_arr,
+            image_data=processed_image,
             user_id=session['user_id']
         )
         
@@ -229,6 +226,7 @@ def like_post(post_id):
 @app.route('/post/<int:post_id>/comment', methods=['POST'])
 def add_comment(post_id):
     if 'user_id' not in session:
+        flash('Você precisa estar logado para comentar!')
         return redirect(url_for('login'))
     
     content = request.form['content']
@@ -241,6 +239,26 @@ def add_comment(post_id):
         db.session.add(comment)
         db.session.commit()
     
+    return redirect(url_for('index'))
+
+@app.route('/post/<int:post_id>/delete', methods=['POST'])
+def delete_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    
+    # Verifica se o usuário é o autor do post ou é admin
+    if 'user_id' not in session or (post.user_id != session['user_id'] and not session.get('is_admin')):
+        flash('Você não tem permissão para excluir este anúncio!')
+        return redirect(url_for('index'))
+    
+    # Remove todos os likes e comentários associados
+    Like.query.filter_by(post_id=post_id).delete()
+    Comment.query.filter_by(post_id=post_id).delete()
+    
+    # Remove o post
+    db.session.delete(post)
+    db.session.commit()
+    
+    flash('Anúncio excluído com sucesso!')
     return redirect(url_for('index'))
 
 # Rotas de perfil e busca
@@ -301,6 +319,31 @@ def post_image(post_id):
             mimetype='image/jpeg'
         )
     return send_file('static/default_post.png')
+
+@app.route('/update_profile', methods=['POST'])
+def update_profile():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    user = User.query.get(session['user_id'])
+    if not user:
+        return redirect(url_for('login'))
+    
+    location = request.form.get('location')
+    profile_picture = request.files.get('profile_picture')
+    
+    if location:
+        user.location = location
+    
+    if profile_picture:
+        image_data = profile_picture.read()
+        processed_image = process_image(image_data, max_size=(200, 200))
+        if processed_image:
+            user.profile_picture = processed_image
+    
+    db.session.commit()
+    flash('Perfil atualizado com sucesso!')
+    return redirect(url_for('user_profile', user_id=user.id))
 
 if __name__ == '__main__':
     with app.app_context():
