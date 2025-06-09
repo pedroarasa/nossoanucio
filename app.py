@@ -21,70 +21,65 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave_secreta_123')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/rede_social')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'postgresql://neondb_owner:YOUR_PASSWORD@ep-cool-forest-a5f6f8f8.us-east-2.aws.neon.tech/neondb')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 db = SQLAlchemy(app)
 
 class User(db.Model):
-    __tablename__ = 'usuarios'
+    __tablename__ = 'Usuários'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128))
-    profile_picture = db.Column(db.LargeBinary)
+    password = db.Column(db.String(200), nullable=False)
     location = db.Column(db.String(100))
+    profile_picture = db.Column(db.LargeBinary)
     is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     posts = db.relationship('Post', backref='author', lazy=True)
-    likes = db.relationship('Like', backref='user', lazy=True)
-    comments = db.relationship('Comment', backref='user', lazy=True)
 
 class Post(db.Model):
-    __tablename__ = 'posts'
+    __tablename__ = 'Posts'
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     price = db.Column(db.Float, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
+    photos = db.relationship('PostPhoto', backref='post', lazy=True)
     likes = db.relationship('Like', backref='post', lazy=True)
     comments = db.relationship('Comment', backref='post', lazy=True)
-    photos = db.relationship('PostPhoto', backref='post', lazy=True)
 
 class PostPhoto(db.Model):
     __tablename__ = 'fotos_anuncio'
     id = db.Column(db.Integer, primary_key=True)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('Posts.id'), nullable=False)
     image_data = db.Column(db.LargeBinary, nullable=False)
     is_main = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Like(db.Model):
-    __tablename__ = 'gosta'
+    __tablename__ = 'Gosta'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('Posts.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Comment(db.Model):
-    __tablename__ = 'comentarios'
+    __tablename__ = 'Comentários'
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('Usuários.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('Posts.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    user_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    user = db.relationship('User', backref='comments')
 
 def process_image(image_data, max_size=(800, 800)):
-    try:
-        img = PILImage.open(io.BytesIO(image_data))
-        img.thumbnail(max_size)
-        output = io.BytesIO()
-        img.save(output, format='JPEG', quality=85)
-        return output.getvalue()
-    except Exception as e:
-        print(f"Erro ao processar imagem: {e}")
-        return None
+    img = PILImage.open(io.BytesIO(image_data))
+    img.thumbnail(max_size)
+    output = io.BytesIO()
+    img.save(output, format='JPEG', quality=85)
+    return output.getvalue()
 
 # Rotas de autenticação
 @app.route('/')
@@ -104,7 +99,7 @@ def login():
         
         user = User.query.filter_by(username=username).first()
         
-        if user and check_password_hash(user.password_hash, password):
+        if user and check_password_hash(user.password, password):
             session['user_id'] = user.id
             session['is_admin'] = user.is_admin
             flash('Login realizado com sucesso!')
@@ -130,29 +125,19 @@ def register():
             flash('Email já cadastrado')
             return redirect(url_for('register'))
         
-        profile_picture = request.files.get('profile_picture')
-        if profile_picture:
-            image_data = profile_picture.read()
-            processed_image = process_image(image_data, max_size=(200, 200))
-            if processed_image:
-                image_data = processed_image
-        else:
-            # Criar uma imagem padrão em branco
-            img = PILImage.new('RGB', (200, 200), color='gray')
-            img_byte_arr = io.BytesIO()
-            img.save(img_byte_arr, format='PNG')
-            image_data = img_byte_arr.getvalue()
-        
-        # Verifica se é o usuário admin
-        is_admin = username == 'dono@dono'
+        profile_picture = None
+        if 'profile_picture' in request.files:
+            file = request.files['profile_picture']
+            if file and file.filename:
+                profile_picture = process_image(file.read())
         
         user = User(
             username=username,
             email=email,
-            password_hash=generate_password_hash(password),
+            password=generate_password_hash(password),
             location=location,
-            profile_picture=image_data,
-            is_admin=is_admin
+            profile_picture=profile_picture,
+            is_admin=(username == 'dono@dono')
         )
         
         db.session.add(user)
@@ -174,7 +159,7 @@ def logout():
 @app.route('/create_post', methods=['POST'])
 def create_post():
     if 'user_id' not in session:
-        flash('Você precisa estar logado para criar um anúncio!')
+        flash('Você precisa estar logado para criar um anúncio')
         return redirect(url_for('login'))
     
     content = request.form['content']
@@ -182,12 +167,7 @@ def create_post():
     images = request.files.getlist('images')
     
     if not images:
-        flash('É necessário enviar pelo menos uma imagem!')
-        return redirect(url_for('index'))
-    
-    # Verifica o limite de 10 imagens
-    if len(images) > 10:
-        flash('Você pode enviar no máximo 10 imagens por anúncio!')
+        flash('Você precisa adicionar pelo menos uma imagem')
         return redirect(url_for('index'))
     
     post = Post(
@@ -196,76 +176,78 @@ def create_post():
         user_id=session['user_id']
     )
     db.session.add(post)
-    db.session.flush()  # Para obter o ID do post
+    db.session.commit()
     
-    # Processa e salva as imagens
     for i, image in enumerate(images):
-        if image:
-            image_data = image.read()
-            processed_image = process_image(image_data)
-            if processed_image:
-                photo = PostPhoto(
-                    post_id=post.id,
-                    image_data=processed_image,
-                    is_main=(i == 0)  # A primeira imagem é a principal
-                )
-                db.session.add(photo)
+        if image and image.filename:
+            image_data = process_image(image.read())
+            photo = PostPhoto(
+                post_id=post.id,
+                image_data=image_data,
+                is_main=(i == 0)
+            )
+            db.session.add(photo)
     
     db.session.commit()
-    flash('Anúncio publicado com sucesso!')
+    flash('Anúncio criado com sucesso!')
     return redirect(url_for('index'))
 
 @app.route('/post/<int:post_id>/like', methods=['POST'])
 def like_post(post_id):
     if 'user_id' not in session:
-        return jsonify({'error': 'Não autorizado'}), 401
+        return {'error': 'Não autorizado'}, 401
     
-    post = Post.query.get_or_404(post_id)
-    existing_like = Like.query.filter_by(
+    like = Like.query.filter_by(
         user_id=session['user_id'],
         post_id=post_id
     ).first()
     
-    if existing_like:
-        db.session.delete(existing_like)
-        action = 'unliked'
-    else:
-        like = Like(user_id=session['user_id'], post_id=post_id)
-        db.session.add(like)
-        action = 'liked'
+    if like:
+        db.session.delete(like)
+        db.session.commit()
+        return {'action': 'unliked'}
     
+    like = Like(user_id=session['user_id'], post_id=post_id)
+    db.session.add(like)
     db.session.commit()
-    return jsonify({'action': action})
+    return {'action': 'liked'}
 
 @app.route('/post/<int:post_id>/comment', methods=['POST'])
 def add_comment(post_id):
     if 'user_id' not in session:
-        flash('Você precisa estar logado para comentar!')
+        flash('Você precisa estar logado para comentar')
         return redirect(url_for('login'))
     
     content = request.form['content']
-    if content:
-        comment = Comment(
-            content=content,
-            user_id=session['user_id'],
-            post_id=post_id
-        )
-        db.session.add(comment)
-        db.session.commit()
+    comment = Comment(
+        content=content,
+        user_id=session['user_id'],
+        post_id=post_id
+    )
+    db.session.add(comment)
+    db.session.commit()
     
+    flash('Comentário adicionado com sucesso!')
     return redirect(url_for('index'))
 
 @app.route('/post/<int:post_id>/delete', methods=['POST'])
 def delete_post(post_id):
-    post = Post.query.get_or_404(post_id)
+    if 'user_id' not in session:
+        flash('Você precisa estar logado para excluir um anúncio')
+        return redirect(url_for('login'))
     
-    # Verifica se o usuário é o autor do post ou é admin
-    if 'user_id' not in session or (post.user_id != session['user_id'] and not session.get('is_admin')):
-        flash('Você não tem permissão para excluir este anúncio!')
+    post = Post.query.get_or_404(post_id)
+    if session['user_id'] != post.user_id and not session.get('is_admin'):
+        flash('Você não tem permissão para excluir este anúncio')
         return redirect(url_for('index'))
     
-    # Remove todos os likes e comentários associados
+    # Remove todas as fotos associadas
+    PostPhoto.query.filter_by(post_id=post_id).delete()
+    
+    # Remove todos os likes associados
     Like.query.filter_by(post_id=post_id).delete()
+    
+    # Remove todos os comentários associados
     Comment.query.filter_by(post_id=post_id).delete()
     
     # Remove o post
@@ -278,9 +260,6 @@ def delete_post(post_id):
 # Rotas de perfil e busca
 @app.route('/user/<int:user_id>')
 def user_profile(user_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
     user = User.query.get_or_404(user_id)
     posts = Post.query.filter_by(user_id=user_id).order_by(Post.created_at.desc()).all()
     return render_template('user_profile.html', user=user, posts=posts)
@@ -322,13 +301,25 @@ def profile_image(user_id):
             io.BytesIO(user.profile_picture),
             mimetype='image/jpeg'
         )
-    return send_file('static/default_profile.png')
+    # Imagem padrão em bytes
+    default_image = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a\x1f\x1e\x1d\x1a\x1c\x1c $.\' ",#\x1c\x1c(7),01444\x1f\'9=82<.342\xff\xdb\x00C\x01\t\t\t\x0c\x0b\x0c\x18\r\r\x182!\x1c!22222222222222222222222222222222222222222222222222\xff\xc0\x00\x11\x08\x00\x01\x00\x01\x03\x01"\x00\x02\x11\x01\x03\x11\x01\xff\xc4\x00\x15\x00\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\xff\xc4\x00\x14\x10\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xc4\x00\x14\x11\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xc4\x00\x15\x10\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\xff\xc4\x00\x14\x11\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xda\x00\x0c\x03\x01\x00\x02\x11\x03\x11\x00?\x00\xf5\xff\xd9'
+    return send_file(
+        io.BytesIO(default_image),
+        mimetype='image/jpeg'
+    )
 
 @app.route('/post_image/<int:photo_id>')
 def post_image(photo_id):
     photo = PostPhoto.query.get_or_404(photo_id)
+    if photo.image_data:
+        return send_file(
+            io.BytesIO(photo.image_data),
+            mimetype='image/jpeg'
+        )
+    # Imagem padrão em bytes
+    default_image = b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a\x1f\x1e\x1d\x1a\x1c\x1c $.\' ",#\x1c\x1c(7),01444\x1f\'9=82<.342\xff\xdb\x00C\x01\t\t\t\x0c\x0b\x0c\x18\r\r\x182!\x1c!22222222222222222222222222222222222222222222222222\xff\xc0\x00\x11\x08\x00\x01\x00\x01\x03\x01"\x00\x02\x11\x01\x03\x11\x01\xff\xc4\x00\x15\x00\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\xff\xc4\x00\x14\x10\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xc4\x00\x14\x11\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xc4\x00\x15\x10\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\xff\xc4\x00\x14\x11\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xda\x00\x0c\x03\x01\x00\x02\x11\x03\x11\x00?\x00\xf5\xff\xd9'
     return send_file(
-        io.BytesIO(photo.image_data),
+        io.BytesIO(default_image),
         mimetype='image/jpeg'
     )
 
