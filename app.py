@@ -8,17 +8,39 @@ from PIL import Image as PILImage
 from dotenv import load_dotenv
 from sqlalchemy import or_
 from functools import wraps
+from PIL import Image
 
 # Carregar variáveis de ambiente
 load_dotenv()
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave-secreta-padrao')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///site.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 
 db = SQLAlchemy(app)
+
+# Criar imagens padrão se não existirem
+def create_default_images():
+    try:
+        if not os.path.exists('static/img'):
+            os.makedirs('static/img')
+        
+        # Criar imagem de perfil padrão
+        if not os.path.exists('static/img/default_profile.png'):
+            img = Image.new('RGB', (100, 100), 'gray')
+            img.save('static/img/default_profile.png')
+        
+        # Criar imagem de post padrão
+        if not os.path.exists('static/img/default_post.png'):
+            img = Image.new('RGB', (400, 300), 'gray')
+            img.save('static/img/default_post.png')
+    except Exception as e:
+        app.logger.error(f"Erro ao criar imagens padrão: {str(e)}")
+
+# Criar imagens padrão ao iniciar
+create_default_images()
 
 class User(db.Model):
     __tablename__ = 'usuários'
@@ -119,11 +141,26 @@ class Curriculo(db.Model):
     curriculo_user = db.relationship('User', back_populates='user_curriculos')
 
 def process_image(image_data, max_size=(800, 800)):
-    img = PILImage.open(io.BytesIO(image_data))
-    img.thumbnail(max_size)
-    output = io.BytesIO()
-    img.save(output, format='JPEG', quality=85)
-    return output.getvalue()
+    try:
+        # Abre a imagem usando PIL
+        img = Image.open(io.BytesIO(image_data))
+        
+        # Converte para RGB se necessário
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+        
+        # Redimensiona mantendo a proporção
+        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+        
+        # Salva a imagem processada
+        output = io.BytesIO()
+        img.save(output, format='JPEG', quality=85, optimize=True)
+        output.seek(0)
+        
+        return output.getvalue()
+    except Exception as e:
+        app.logger.error(f"Erro ao processar imagem: {str(e)}")
+        return image_data  # Retorna a imagem original em caso de erro
 
 def login_required(f):
     @wraps(f)
@@ -277,21 +314,31 @@ def create_post():
 
 @app.route('/profile_image/<int:user_id>')
 def profile_image(user_id):
-    user = User.query.get_or_404(user_id)
-    if user.profile_picture:
-        return send_file(
-            io.BytesIO(user.profile_picture),
-            mimetype='image/jpeg'
-        )
-    return send_file('static/default_profile.jpg', mimetype='image/jpeg')
+    try:
+        user = User.query.get_or_404(user_id)
+        if user.profile_picture:
+            return send_file(
+                io.BytesIO(user.profile_picture),
+                mimetype='image/jpeg'
+            )
+        return send_file('static/img/default_profile.png', mimetype='image/png')
+    except Exception as e:
+        app.logger.error(f"Erro ao carregar imagem do perfil: {str(e)}")
+        return send_file('static/img/default_profile.png', mimetype='image/png')
 
 @app.route('/post_image/<int:photo_id>')
 def post_image(photo_id):
-    photo = Photo.query.get_or_404(photo_id)
-    return send_file(
-        io.BytesIO(photo.image_data),
-        mimetype='image/jpeg'
-    )
+    try:
+        photo = Photo.query.get_or_404(photo_id)
+        if photo.image_data:
+            return send_file(
+                io.BytesIO(photo.image_data),
+                mimetype='image/jpeg'
+            )
+        return send_file('static/img/default_post.png', mimetype='image/png')
+    except Exception as e:
+        app.logger.error(f"Erro ao carregar imagem do post: {str(e)}")
+        return send_file('static/img/default_post.png', mimetype='image/png')
 
 @app.route('/user/<int:user_id>')
 def user_profile(user_id):
@@ -421,6 +468,40 @@ def download_curriculo(curriculo_id):
         as_attachment=True,
         download_name=f'curriculo_{curriculo.nome_completo}.pdf'
     )
+
+@app.route('/upload_profile_picture', methods=['POST'])
+@login_required
+def upload_profile_picture():
+    if 'profile_picture' not in request.files:
+        flash('Nenhum arquivo selecionado', 'error')
+        return redirect(url_for('user_profile', user_id=session['user_id']))
+    
+    file = request.files['profile_picture']
+    if file.filename == '':
+        flash('Nenhum arquivo selecionado', 'error')
+        return redirect(url_for('user_profile', user_id=session['user_id']))
+    
+    if file and allowed_file(file.filename):
+        try:
+            image_data = file.read()
+            processed_image = process_image(image_data)
+            
+            user = User.query.get(session['user_id'])
+            user.profile_picture = processed_image
+            db.session.commit()
+            
+            flash('Foto de perfil atualizada com sucesso!', 'success')
+        except Exception as e:
+            app.logger.error(f"Erro ao salvar foto de perfil: {str(e)}")
+            flash('Erro ao processar a imagem', 'error')
+    else:
+        flash('Tipo de arquivo não permitido', 'error')
+    
+    return redirect(url_for('user_profile', user_id=session['user_id']))
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif'}
 
 if __name__ == '__main__':
     app.run(debug=True) 
