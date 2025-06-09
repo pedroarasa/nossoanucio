@@ -1,54 +1,13 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.utils import secure_filename
-from werkzeug.security import generate_password_hash, check_password_hash
 import os
-from datetime import datetime
-import base64
-from io import BytesIO
-from PIL import Image as PILImage
 import io
-import logging
-import random
+from datetime import datetime
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+from PIL import Image as PILImage
 from dotenv import load_dotenv
 from sqlalchemy import or_
 from sqlalchemy.sql import text
-from logging.handlers import RotatingFileHandler
-import sys
-
-# Configuração de Logging
-def setup_logger():
-    # Cria o diretório de logs se não existir
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
-    
-    # Configura o logger principal
-    logger = logging.getLogger('app')
-    logger.setLevel(logging.INFO)
-    
-    # Formato do log
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    
-    # Handler para arquivo com rotação
-    file_handler = RotatingFileHandler(
-        'logs/app.log',
-        maxBytes=1024 * 1024,  # 1MB
-        backupCount=10
-    )
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-    
-    # Handler para console
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
-    
-    return logger
-
-# Inicializa o logger
-logger = setup_logger()
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -126,32 +85,14 @@ def process_image(image_data, max_size=(800, 800)):
     img.save(output, format='JPEG', quality=85)
     return output.getvalue()
 
-# Função para log de erros
-def log_error(error, context=None):
-    error_msg = f"Erro: {str(error)}"
-    if context:
-        error_msg += f" | Contexto: {context}"
-    logger.error(error_msg)
-
-# Função para log de ações do usuário
-def log_user_action(action, user_id=None, details=None):
-    log_msg = f"Ação: {action}"
-    if user_id:
-        log_msg += f" | Usuário: {user_id}"
-    if details:
-        log_msg += f" | Detalhes: {details}"
-    logger.info(log_msg)
-
 # Rotas de autenticação
 @app.route('/')
 def index():
     try:
         posts = Post.query.order_by(Post.created_at.desc()).all()
         users = User.query.all()
-        log_user_action('Página inicial acessada', session.get('user_id'))
         return render_template('index.html', posts=posts, users=users)
     except Exception as e:
-        log_error(e, 'Erro ao carregar página inicial')
         flash('Erro ao carregar a página. Por favor, tente novamente.')
         return redirect(url_for('index'))
 
@@ -182,7 +123,6 @@ def register():
             location = request.form['location']
             
             if User.query.filter_by(username=username).first():
-                log_user_action('Tentativa de registro com username existente', None, username)
                 flash('Nome de usuário já existe')
                 return redirect(url_for('register'))
             
@@ -202,12 +142,10 @@ def register():
             db.session.add(user)
             db.session.commit()
             
-            log_user_action('Novo usuário registrado', user.id, username)
             flash('Registro realizado com sucesso!')
             return redirect(url_for('login'))
             
         except Exception as e:
-            log_error(e, 'Erro no registro de usuário')
             flash('Erro ao registrar. Por favor, tente novamente.')
             return redirect(url_for('register'))
     
@@ -455,31 +393,5 @@ def dislike_post(post_id):
         'dislikes_count': len(post.dislikes)
     })
 
-# Função para criar as tabelas
-def create_tables():
-    with app.app_context():
-        # Primeiro, remove todas as tabelas existentes
-        db.drop_all()
-        # Depois, cria todas as tabelas novamente
-        db.create_all()
-        print("Tabelas criadas com sucesso!")
-
-# Função para atualizar as tabelas existentes
-def update_tables():
-    with app.app_context():
-        # Adiciona a coluna is_admin se não existir
-        try:
-            with db.engine.connect() as conn:
-                conn.execute(text("ALTER TABLE usuários ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE"))
-                conn.commit()
-            print("Coluna is_admin adicionada com sucesso!")
-        except Exception as e:
-            print(f"Erro ao adicionar coluna is_admin: {e}")
-
 if __name__ == '__main__':
-    try:
-        logger.info('Iniciando aplicação...')
-        app.run(debug=True)
-    except Exception as e:
-        log_error(e, 'Erro ao iniciar aplicação')
-        raise 
+    app.run(debug=True) 
