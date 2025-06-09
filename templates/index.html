@@ -75,12 +75,12 @@
             <div class="card-header bg-white">
                 <div class="d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center">
-                        <img src="{{ url_for('profile_image', user_id=post.author.id) }}" 
+                        <img src="{{ url_for('profile_image', user_id=post.user.id) }}" 
                              class="user-profile-picture me-3" alt="Foto de perfil">
                         <div>
-                            <h6 class="mb-0">{{ post.author.username }}</h6>
+                            <h6 class="mb-0">{{ post.user.username }}</h6>
                             <small class="text-muted">
-                                <i class="fas fa-map-marker-alt"></i> {{ post.author.location }}
+                                <i class="fas fa-map-marker-alt"></i> {{ post.user.location }}
                             </small>
                         </div>
                     </div>
@@ -119,7 +119,7 @@
                     € {{ "%.2f"|format(post.price) }}
                 </div>
                 <div class="location-tag">
-                    <i class="fas fa-map-marker-alt"></i> {{ post.author.location }}
+                    <i class="fas fa-map-marker-alt"></i> {{ post.user.location }}
                 </div>
             </div>
             {% endif %}

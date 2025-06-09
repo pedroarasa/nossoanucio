@@ -42,7 +42,7 @@ class Post(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    author = db.relationship('User', backref=db.backref('posts', lazy=True))
+    user = db.relationship('User', backref=db.backref('user_posts', lazy=True))
     photos = db.relationship('PostPhoto', backref='post', lazy=True, cascade='all, delete-orphan')
     likes = db.relationship('Like', backref='post', lazy=True, cascade='all, delete-orphan')
     dislikes = db.relationship('Dislike', backref='post', lazy=True, cascade='all, delete-orphan')

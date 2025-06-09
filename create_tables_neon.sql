@@ -9,23 +9,6 @@ CREATE TABLE IF NOT EXISTS "usuários" (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Criar tabela de currículos
-CREATE TABLE IF NOT EXISTS curriculos (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES "usuários"(id) ON DELETE CASCADE,
-    nome_completo VARCHAR(100) NOT NULL,
-    email VARCHAR(120) NOT NULL,
-    telefone VARCHAR(20),
-    area_profissional VARCHAR(100) NOT NULL,
-    experiencia TEXT,
-    formacao TEXT,
-    habilidades TEXT,
-    objetivo TEXT,
-    curriculo_pdf BYTEA,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
 -- Criar tabela de posts
 CREATE TABLE IF NOT EXISTS posts (
     id SERIAL PRIMARY KEY,
@@ -69,6 +52,23 @@ CREATE TABLE IF NOT EXISTS comentarios (
     user_id INTEGER REFERENCES "usuários"(id) ON DELETE CASCADE,
     post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Criar tabela de currículos
+CREATE TABLE IF NOT EXISTS curriculos (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES "usuários"(id) ON DELETE CASCADE,
+    nome_completo VARCHAR(100) NOT NULL,
+    email VARCHAR(120) NOT NULL,
+    telefone VARCHAR(20),
+    area_profissional VARCHAR(100) NOT NULL,
+    experiencia TEXT,
+    formacao TEXT,
+    habilidades TEXT,
+    objetivo TEXT,
+    curriculo_pdf BYTEA,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Criar índices para melhorar a performance
