@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Currículos - Encontre seu Próximo Emprego{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-center mb-4">Currículos</h2>
+            <p class="text-center">Encontre profissionais qualificados ou cadastre seu currículo para encontrar sua próxima oportunidade!</p>
+        </div>
+    </div>
+
+    {% if session.get('user_id') %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Cadastrar Currículo</h4>
+                    <form action="{{ url_for('create_curriculo') }}" method="post" enctype="multipart/form-data">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="nome_completo" class="form-label">Nome Completo</label>
+                                <input type="text" class="form-control" id="nome_completo" name="nome_completo" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="telefone" class="form-label">Telefone</label>
+                                <input type="tel" class="form-control" id="telefone" name="telefone">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="area_profissional" class="form-label">Área Profissional</label>
+                                <input type="text" class="form-control" id="area_profissional" name="area_profissional" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="experiencia" class="form-label">Experiência Profissional</label>
+                            <textarea class="form-control" id="experiencia" name="experiencia" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="formacao" class="form-label">Formação Acadêmica</label>
+                            <textarea class="form-control" id="formacao" name="formacao" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="habilidades" class="form-label">Habilidades</label>
+                            <textarea class="form-control" id="habilidades" name="habilidades" rows="2" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="objetivo" class="form-label">Objetivo Profissional</label>
+                            <textarea class="form-control" id="objetivo" name="objetivo" rows="2" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="curriculo_pdf" class="form-label">Currículo em PDF (opcional)</label>
+                            <input type="file" class="form-control" id="curriculo_pdf" name="curriculo_pdf" accept=".pdf">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Cadastrar Currículo</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info mb-4">
+        <i class="fas fa-info-circle"></i> Faça <a href="{{ url_for('login') }}" class="alert-link">login</a> ou <a href="{{ url_for('register') }}" class="alert-link">cadastre-se</a> para cadastrar seu currículo!
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-12">
+            <h3 class="mb-4">Currículos Disponíveis</h3>
+            <div class="row">
+                {% for curriculo in curriculos %}
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ curriculo.nome_completo }}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">{{ curriculo.area_profissional }}</h6>
+                            <p class="card-text">
+                                <strong>Email:</strong> {{ curriculo.email }}<br>
+                                {% if curriculo.telefone %}
+                                <strong>Telefone:</strong> {{ curriculo.telefone }}<br>
+                                {% endif %}
+                                <strong>Objetivo:</strong> {{ curriculo.objetivo }}
+                            </p>
+                            <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#curriculo-{{ curriculo.id }}">
+                                Ver Mais
+                            </button>
+                            {% if curriculo.curriculo_pdf %}
+                            <a href="{{ url_for('download_curriculo', curriculo_id=curriculo.id) }}" class="btn btn-outline-primary">
+                                <i class="fas fa-download"></i> Baixar PDF
+                            </a>
+                            {% endif %}
+                        </div>
+                        <div class="collapse" id="curriculo-{{ curriculo.id }}">
+                            <div class="card-body">
+                                <h6>Experiência Profissional</h6>
+                                <p>{{ curriculo.experiencia }}</p>
+                                <h6>Formação Acadêmica</h6>
+                                <p>{{ curriculo.formacao }}</p>
+                                <h6>Habilidades</h6>
+                                <p>{{ curriculo.habilidades }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-12">
+                    <div class="alert alert-info">
+                        Nenhum currículo cadastrado ainda. Seja o primeiro a cadastrar o seu!
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

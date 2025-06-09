@@ -22,6 +22,13 @@
                                 <i class="fas fa-map-marker-alt"></i> {{ user.location }}
                             </small>
                         </div>
+                        {% if session.get('is_admin') and user.id != session.get('user_id') %}
+                        <form action="{{ url_for('delete_user', user_id=user.id) }}" method="post" class="ms-auto" onsubmit="return confirm('Tem certeza que deseja excluir este usuário?');">
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
@@ -125,9 +132,16 @@
                             <i class="fas fa-heart {% if post.likes|selectattr('user_id', 'equalto', session.get('user_id'))|list %}active{% endif %}"></i>
                             <span id="like-count-{{ post.id }}">{{ post.likes|length }}</span>
                         </span>
+                        <span class="dislike-button me-2" onclick="dislikePost({{ post.id }});" id="dislike-{{ post.id }}">
+                            <i class="fas fa-thumbs-down {% if post.dislikes|selectattr('user_id', 'equalto', session.get('user_id'))|list %}active{% endif %}"></i>
+                            <span id="dislike-count-{{ post.id }}">{{ post.dislikes|length }}</span>
+                        </span>
                         {% else %}
                         <span class="text-muted me-2">
                             <i class="fas fa-heart"></i> {{ post.likes|length }}
+                        </span>
+                        <span class="text-muted me-2">
+                            <i class="fas fa-thumbs-down"></i> {{ post.dislikes|length }}
                         </span>
                         {% endif %}
                         <span class="text-muted">
@@ -137,8 +151,8 @@
                     <small class="text-muted">{{ post.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
                 </div>
             </div>
-            {% if session.get('user_id') %}
             <div class="card-footer bg-white">
+                {% if session.get('user_id') %}
                 <form action="{{ url_for('add_comment', post_id=post.id) }}" method="post" class="mb-3">
                     <div class="input-group">
                         <input type="text" class="form-control" name="content" placeholder="Adicione um comentário...">
@@ -147,6 +161,7 @@
                         </button>
                     </div>
                 </form>
+                {% endif %}
                 {% for comment in post.comments %}
                 <div class="d-flex mb-2">
                     <img src="{{ url_for('profile_image', user_id=comment.user.id) }}" 
@@ -159,7 +174,6 @@
                 </div>
                 {% endfor %}
             </div>
-            {% endif %}
         </div>
         {% else %}
         <div class="text-center">
@@ -197,13 +211,49 @@ function likePost(postId) {
     .then(data => {
         const likeButton = document.querySelector(`#like-${postId}`);
         const likeCount = document.querySelector(`#like-count-${postId}`);
+        const dislikeButton = document.querySelector(`#dislike-${postId}`);
+        const dislikeCount = document.querySelector(`#dislike-count-${postId}`);
         
         if (data.action === 'liked') {
             likeButton.classList.add('active');
             likeCount.textContent = parseInt(likeCount.textContent) + 1;
+            // Remove dislike se existir
+            if (dislikeButton.classList.contains('active')) {
+                dislikeButton.classList.remove('active');
+                dislikeCount.textContent = parseInt(dislikeCount.textContent) - 1;
+            }
         } else {
             likeButton.classList.remove('active');
             likeCount.textContent = parseInt(likeCount.textContent) - 1;
+        }
+    });
+}
+
+function dislikePost(postId) {
+    fetch(`/post/${postId}/dislike`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const dislikeButton = document.querySelector(`#dislike-${postId}`);
+        const dislikeCount = document.querySelector(`#dislike-count-${postId}`);
+        const likeButton = document.querySelector(`#like-${postId}`);
+        const likeCount = document.querySelector(`#like-count-${postId}`);
+        
+        if (data.action === 'disliked') {
+            dislikeButton.classList.add('active');
+            dislikeCount.textContent = parseInt(dislikeCount.textContent) + 1;
+            // Remove like se existir
+            if (likeButton.classList.contains('active')) {
+                likeButton.classList.remove('active');
+                likeCount.textContent = parseInt(likeCount.textContent) - 1;
+            }
+        } else {
+            dislikeButton.classList.remove('active');
+            dislikeCount.textContent = parseInt(dislikeCount.textContent) - 1;
         }
     });
 }
