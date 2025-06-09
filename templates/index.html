@@ -75,16 +75,16 @@
             <div class="card-header bg-white">
                 <div class="d-flex align-items-center justify-content-between">
                     <div class="d-flex align-items-center">
-                        <img src="{{ url_for('profile_image', user_id=post.user.id) }}" 
+                        <img src="{{ url_for('profile_image', user_id=post.post_user.id) }}" 
                              class="user-profile-picture me-3" alt="Foto de perfil">
                         <div>
-                            <h6 class="mb-0">{{ post.user.username }}</h6>
+                            <h6 class="mb-0">{{ post.post_user.username }}</h6>
                             <small class="text-muted">
-                                <i class="fas fa-map-marker-alt"></i> {{ post.user.location }}
+                                <i class="fas fa-map-marker-alt"></i> {{ post.post_user.location }}
                             </small>
                         </div>
                     </div>
-                    {% if session.get('user_id') == post.user_id or session.get('is_admin') %}
+                    {% if session.get('user_id') == post.post_user_id or session.get('is_admin') %}
                     <form action="{{ url_for('delete_post', post_id=post.id) }}" method="post" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este anúncio?');">
                         <button type="submit" class="btn btn-danger btn-sm">
                             <i class="fas fa-trash"></i>
@@ -93,18 +93,18 @@
                     {% endif %}
                 </div>
             </div>
-            {% if post.photos %}
+            {% if post.post_photos %}
             <div class="position-relative">
                 <div id="carousel-{{ post.id }}" class="carousel slide" data-bs-ride="carousel">
                     <div class="carousel-inner">
-                        {% for photo in post.photos %}
+                        {% for photo in post.post_photos %}
                         <div class="carousel-item {% if photo.is_main %}active{% endif %}">
                             <img src="{{ url_for('post_image', photo_id=photo.id) }}" 
                                  class="card-img-top" style="max-height: 400px; object-fit: cover;" alt="Imagem do anúncio">
                         </div>
                         {% endfor %}
                     </div>
-                    {% if post.photos|length > 1 %}
+                    {% if post.post_photos|length > 1 %}
                     <button class="carousel-control-prev" type="button" data-bs-target="#carousel-{{ post.id }}" data-bs-slide="prev">
                         <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                         <span class="visually-hidden">Anterior</span>
@@ -119,7 +119,7 @@
                     € {{ "%.2f"|format(post.price) }}
                 </div>
                 <div class="location-tag">
-                    <i class="fas fa-map-marker-alt"></i> {{ post.user.location }}
+                    <i class="fas fa-map-marker-alt"></i> {{ post.post_user.location }}
                 </div>
             </div>
             {% endif %}
@@ -129,23 +129,23 @@
                     <div>
                         {% if session.get('user_id') %}
                         <span class="like-button me-2" onclick="likePost({{ post.id }});" id="like-{{ post.id }}">
-                            <i class="fas fa-heart {% if post.likes|selectattr('user_id', 'equalto', session.get('user_id'))|list %}active{% endif %}"></i>
-                            <span id="like-count-{{ post.id }}">{{ post.likes|length }}</span>
+                            <i class="fas fa-heart {% if post.post_likes|selectattr('like_user.id', 'equalto', session.get('user_id'))|list %}active{% endif %}"></i>
+                            <span id="like-count-{{ post.id }}">{{ post.post_likes|length }}</span>
                         </span>
                         <span class="dislike-button me-2" onclick="dislikePost({{ post.id }});" id="dislike-{{ post.id }}">
-                            <i class="fas fa-thumbs-down {% if post.dislikes|selectattr('user_id', 'equalto', session.get('user_id'))|list %}active{% endif %}"></i>
-                            <span id="dislike-count-{{ post.id }}">{{ post.dislikes|length }}</span>
+                            <i class="fas fa-thumbs-down {% if post.post_dislikes|selectattr('dislike_user.id', 'equalto', session.get('user_id'))|list %}active{% endif %}"></i>
+                            <span id="dislike-count-{{ post.id }}">{{ post.post_dislikes|length }}</span>
                         </span>
                         {% else %}
                         <span class="text-muted me-2">
-                            <i class="fas fa-heart"></i> {{ post.likes|length }}
+                            <i class="fas fa-heart"></i> {{ post.post_likes|length }}
                         </span>
                         <span class="text-muted me-2">
-                            <i class="fas fa-thumbs-down"></i> {{ post.dislikes|length }}
+                            <i class="fas fa-thumbs-down"></i> {{ post.post_dislikes|length }}
                         </span>
                         {% endif %}
                         <span class="text-muted">
-                            <i class="fas fa-comment"></i> {{ post.comments|length }}
+                            <i class="fas fa-comment"></i> {{ post.post_comments|length }}
                         </span>
                     </div>
                     <small class="text-muted">{{ post.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
@@ -162,12 +162,12 @@
                     </div>
                 </form>
                 {% endif %}
-                {% for comment in post.comments %}
+                {% for comment in post.post_comments %}
                 <div class="d-flex mb-2">
-                    <img src="{{ url_for('profile_image', user_id=comment.user.id) }}" 
+                    <img src="{{ url_for('profile_image', user_id=comment.comment_user.id) }}" 
                          class="user-profile-picture me-2" style="width: 30px; height: 30px;" alt="Foto de perfil">
                     <div class="bg-light rounded p-2 flex-grow-1">
-                        <strong>{{ comment.user.username }}</strong>
+                        <strong>{{ comment.comment_user.username }}</strong>
                         <p class="mb-0">{{ comment.content }}</p>
                         <small class="text-muted">{{ comment.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
                     </div>

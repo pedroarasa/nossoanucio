@@ -42,13 +42,13 @@ class Post(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    user = db.relationship('User', backref=db.backref('user_posts', lazy=True))
-    photos = db.relationship('PostPhoto', backref='post', lazy=True, cascade='all, delete-orphan')
-    likes = db.relationship('Like', backref='post', lazy=True, cascade='all, delete-orphan')
-    dislikes = db.relationship('Dislike', backref='post', lazy=True, cascade='all, delete-orphan')
-    comments = db.relationship('Comment', backref='post', lazy=True, cascade='all, delete-orphan')
+    post_user = db.relationship('User', backref=db.backref('user_posts', lazy=True))
+    post_photos = db.relationship('Photo', backref='photo_post', lazy=True, cascade='all, delete-orphan')
+    post_likes = db.relationship('Like', backref='like_post', lazy=True, cascade='all, delete-orphan')
+    post_dislikes = db.relationship('Dislike', backref='dislike_post', lazy=True, cascade='all, delete-orphan')
+    post_comments = db.relationship('Comment', backref='comment_post', lazy=True, cascade='all, delete-orphan')
 
-class PostPhoto(db.Model):
+class Photo(db.Model):
     __tablename__ = 'fotos_anuncio'
     id = db.Column(db.Integer, primary_key=True)
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
@@ -63,7 +63,7 @@ class Like(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    user = db.relationship('User', backref=db.backref('likes', lazy=True))
+    like_user = db.relationship('User', backref=db.backref('user_likes', lazy=True))
     __table_args__ = (db.UniqueConstraint('user_id', 'post_id'),)
 
 class Dislike(db.Model):
@@ -73,7 +73,7 @@ class Dislike(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    user = db.relationship('User', backref=db.backref('dislikes', lazy=True))
+    dislike_user = db.relationship('User', backref=db.backref('user_dislikes', lazy=True))
     __table_args__ = (db.UniqueConstraint('user_id', 'post_id'),)
 
 class Comment(db.Model):
@@ -83,6 +83,8 @@ class Comment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    comment_user = db.relationship('User', backref=db.backref('user_comments', lazy=True))
 
 class Curriculo(db.Model):
     __tablename__ = 'curriculos'
@@ -100,7 +102,7 @@ class Curriculo(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    user = db.relationship('User', backref=db.backref('curriculos', lazy=True))
+    curriculo_user = db.relationship('User', backref=db.backref('user_curriculos', lazy=True))
 
 def process_image(image_data, max_size=(800, 800)):
     img = PILImage.open(io.BytesIO(image_data))
@@ -244,7 +246,7 @@ def create_post():
         for i, image in enumerate(images):
             if image and image.filename:
                 image_data = image.read()
-                photo = PostPhoto(
+                photo = Photo(
                     post_id=post.id,
                     image_data=process_image(image_data),
                     is_main=(i == 0)
@@ -271,7 +273,7 @@ def profile_image(user_id):
 
 @app.route('/post_image/<int:photo_id>')
 def post_image(photo_id):
-    photo = PostPhoto.query.get_or_404(photo_id)
+    photo = Photo.query.get_or_404(photo_id)
     return send_file(
         io.BytesIO(photo.image_data),
         mimetype='image/jpeg'
