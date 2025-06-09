@@ -50,6 +50,7 @@ class Post(db.Model):
     photos = db.relationship('PostPhoto', backref='post', lazy=True)
     likes = db.relationship('Like', backref='post', lazy=True)
     comments = db.relationship('Comment', backref='post', lazy=True)
+    dislikes = db.relationship('Dislike', backref='post', lazy=True)
 
 class PostPhoto(db.Model):
     __tablename__ = 'fotos_anuncio'
@@ -74,6 +75,16 @@ class Comment(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('Posts.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.relationship('User', backref='comments')
+
+class Dislike(db.Model):
+    __tablename__ = 'dislikes'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('usuários.id'), nullable=False)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    user = db.relationship('User', backref='dislikes')
+    post = db.relationship('Post', backref='dislikes')
 
 def process_image(image_data, max_size=(800, 800)):
     img = PILImage.open(io.BytesIO(image_data))
@@ -362,6 +373,39 @@ def update_profile():
 def announcements():
     posts = Post.query.order_by(Post.created_at.desc()).all()
     return render_template('announcements.html', posts=posts)
+
+@app.route('/post/<int:post_id>/dislike', methods=['POST'])
+def dislike_post(post_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Usuário não está logado'}), 401
+    
+    post = Post.query.get_or_404(post_id)
+    user_id = session['user_id']
+    
+    # Remove like se existir
+    like = Like.query.filter_by(user_id=user_id, post_id=post_id).first()
+    if like:
+        db.session.delete(like)
+    
+    # Verifica se já existe dislike
+    dislike = Dislike.query.filter_by(user_id=user_id, post_id=post_id).first()
+    
+    if dislike:
+        # Remove o dislike
+        db.session.delete(dislike)
+        action = 'undisliked'
+    else:
+        # Adiciona o dislike
+        dislike = Dislike(user_id=user_id, post_id=post_id)
+        db.session.add(dislike)
+        action = 'disliked'
+    
+    db.session.commit()
+    
+    return jsonify({
+        'action': action,
+        'dislikes_count': len(post.dislikes)
+    })
 
 if __name__ == '__main__':
     with app.app_context():

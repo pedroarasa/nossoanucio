@@ -126,16 +126,30 @@
             font-size: 1rem;
             z-index: 2;
         }
-        .like-button {
+        .like-button, .dislike-button {
             cursor: pointer;
-            color: #dc3545;
             transition: transform 0.2s ease;
+            padding: 5px 10px;
+            border-radius: 20px;
+            background-color: #f8f9fa;
         }
-        .like-button:hover {
+        .like-button:hover, .dislike-button:hover {
             transform: scale(1.1);
+            background-color: #e9ecef;
         }
         .like-button.active {
             color: #dc3545;
+            background-color: #ffe6e6;
+        }
+        .dislike-button {
+            color: #6c757d;
+        }
+        .dislike-button.active {
+            color: #dc3545;
+            background-color: #ffe6e6;
+        }
+        .like-button i, .dislike-button i {
+            margin-right: 5px;
         }
         .btn-view-all {
             background-color: #ff6b6b;

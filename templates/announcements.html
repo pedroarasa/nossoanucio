@@ -58,27 +58,33 @@
                     <p class="card-text">{{ post.content }}</p>
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <span class="text-muted me-2">
-                                <i class="fas fa-heart"></i> {{ post.likes|length }}
+                            {% if session.get('user_id') %}
+                            <span class="like-button me-2" onclick="likePost({{ post.id }});" id="like-{{ post.id }}">
+                                <i class="fas fa-heart {% if post.likes|selectattr('user_id', 'equalto', session.get('user_id'))|list %}active{% endif %}"></i>
+                                <span id="like-count-{{ post.id }}">{{ post.likes|length }}</span>
+                            </span>
+                            <span class="dislike-button me-2" onclick="dislikePost({{ post.id }});" id="dislike-{{ post.id }}">
+                                <i class="fas fa-thumbs-down {% if post.dislikes|selectattr('user_id', 'equalto', session.get('user_id'))|list %}active{% endif %}"></i>
+                                <span id="dislike-count-{{ post.id }}">{{ post.dislikes|length }}</span>
+                            </span>
+                            {% else %}
+                            <span class="text-muted me-3">
+                                <i class="fas fa-heart"></i> {{ post.likes|length }} curtidas
                             </span>
                             <span class="text-muted">
-                                <i class="fas fa-comment"></i> {{ post.comments|length }}
+                                <i class="fas fa-thumbs-down"></i> {{ post.dislikes|length }} não gostei
+                            </span>
+                            {% endif %}
+                            <span class="text-muted ms-3">
+                                <i class="fas fa-comment"></i> {{ post.comments|length }} comentários
                             </span>
                         </div>
                         <small class="text-muted">{{ post.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
                     </div>
                 </div>
                 
-                {% if session.get('user_id') %}
                 <div class="card-footer bg-white">
-                    <form action="{{ url_for('add_comment', post_id=post.id) }}" method="post" class="mb-3">
-                        <div class="input-group">
-                            <input type="text" class="form-control" name="content" placeholder="Adicione um comentário...">
-                            <button class="btn btn-outline-primary" type="submit">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
-                        </div>
-                    </form>
+                    <h6 class="mb-3">Comentários</h6>
                     {% for comment in post.comments %}
                     <div class="d-flex mb-2">
                         <img src="{{ url_for('profile_image', user_id=comment.user.id) }}" 
@@ -90,8 +96,13 @@
                         </div>
                     </div>
                     {% endfor %}
+                    
+                    {% if not session.get('user_id') %}
+                    <div class="alert alert-info mt-3 mb-0">
+                        <i class="fas fa-info-circle"></i> Faça <a href="{{ url_for('login') }}" class="alert-link">login</a> para curtir, não curtir e comentar!
+                    </div>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
         </div>
         {% else %}
@@ -102,4 +113,64 @@
         {% endfor %}
     </div>
 </div>
+
+<script>
+function likePost(postId) {
+    fetch(`/post/${postId}/like`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const likeButton = document.querySelector(`#like-${postId}`);
+        const likeCount = document.querySelector(`#like-count-${postId}`);
+        const dislikeButton = document.querySelector(`#dislike-${postId}`);
+        
+        if (data.action === 'liked') {
+            likeButton.classList.add('active');
+            likeCount.textContent = parseInt(likeCount.textContent) + 1;
+            // Remove dislike se existir
+            if (dislikeButton.classList.contains('active')) {
+                dislikeButton.classList.remove('active');
+                document.querySelector(`#dislike-count-${postId}`).textContent = 
+                    parseInt(document.querySelector(`#dislike-count-${postId}`).textContent) - 1;
+            }
+        } else {
+            likeButton.classList.remove('active');
+            likeCount.textContent = parseInt(likeCount.textContent) - 1;
+        }
+    });
+}
+
+function dislikePost(postId) {
+    fetch(`/post/${postId}/dislike`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const dislikeButton = document.querySelector(`#dislike-${postId}`);
+        const dislikeCount = document.querySelector(`#dislike-count-${postId}`);
+        const likeButton = document.querySelector(`#like-${postId}`);
+        
+        if (data.action === 'disliked') {
+            dislikeButton.classList.add('active');
+            dislikeCount.textContent = parseInt(dislikeCount.textContent) + 1;
+            // Remove like se existir
+            if (likeButton.classList.contains('active')) {
+                likeButton.classList.remove('active');
+                document.querySelector(`#like-count-${postId}`).textContent = 
+                    parseInt(document.querySelector(`#like-count-${postId}`).textContent) - 1;
+            }
+        } else {
+            dislikeButton.classList.remove('active');
+            dislikeCount.textContent = parseInt(dislikeCount.textContent) - 1;
+        }
+    });
+}
+</script>
 {% endblock %} 
