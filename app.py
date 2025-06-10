@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from sqlalchemy import or_
 from functools import wraps
 from PIL import Image
+from models import db, User, ProfilePhoto, Post, Photo, Like, Dislike, Comment, Curriculo
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -19,7 +20,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///sit
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 
-db = SQLAlchemy(app)
+db.init_app(app)
 
 # Criar imagens padrão se não existirem
 def create_default_images():
@@ -41,104 +42,6 @@ def create_default_images():
 
 # Criar imagens padrão ao iniciar
 create_default_images()
-
-class User(db.Model):
-    __tablename__ = 'usuários'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(120), nullable=False)
-    location = db.Column(db.String(100))
-    profile_picture = db.Column(db.LargeBinary)
-    is_admin = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relacionamentos
-    user_posts = db.relationship('Post', back_populates='post_user', lazy=True)
-    user_likes = db.relationship('Like', back_populates='like_user', lazy=True)
-    user_dislikes = db.relationship('Dislike', back_populates='dislike_user', lazy=True)
-    user_comments = db.relationship('Comment', back_populates='comment_user', lazy=True)
-    user_curriculos = db.relationship('Curriculo', back_populates='curriculo_user', lazy=True)
-
-class Post(db.Model):
-    __tablename__ = 'posts'
-    id = db.Column(db.Integer, primary_key=True)
-    content = db.Column(db.Text, nullable=False)
-    price = db.Column(db.Numeric(10, 2), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relacionamentos
-    post_user = db.relationship('User', back_populates='user_posts')
-    post_photos = db.relationship('Photo', back_populates='photo_post', lazy=True, cascade='all, delete-orphan')
-    post_likes = db.relationship('Like', back_populates='like_post', lazy=True, cascade='all, delete-orphan')
-    post_dislikes = db.relationship('Dislike', back_populates='dislike_post', lazy=True, cascade='all, delete-orphan')
-    post_comments = db.relationship('Comment', back_populates='comment_post', lazy=True, cascade='all, delete-orphan')
-
-class Photo(db.Model):
-    __tablename__ = 'fotos_anuncio'
-    id = db.Column(db.Integer, primary_key=True)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
-    image_data = db.Column(db.LargeBinary, nullable=False)
-    is_main = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relacionamentos
-    photo_post = db.relationship('Post', back_populates='post_photos')
-
-class Like(db.Model):
-    __tablename__ = 'gosta'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relacionamentos
-    like_user = db.relationship('User', back_populates='user_likes')
-    like_post = db.relationship('Post', back_populates='post_likes')
-    __table_args__ = (db.UniqueConstraint('user_id', 'post_id'),)
-
-class Dislike(db.Model):
-    __tablename__ = 'nao_gosta'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relacionamentos
-    dislike_user = db.relationship('User', back_populates='user_dislikes')
-    dislike_post = db.relationship('Post', back_populates='post_dislikes')
-    __table_args__ = (db.UniqueConstraint('user_id', 'post_id'),)
-
-class Comment(db.Model):
-    __tablename__ = 'comentarios'
-    id = db.Column(db.Integer, primary_key=True)
-    content = db.Column(db.Text, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
-    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relacionamentos
-    comment_user = db.relationship('User', back_populates='user_comments')
-    comment_post = db.relationship('Post', back_populates='post_comments')
-
-class Curriculo(db.Model):
-    __tablename__ = 'curriculos'
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('usuários.id', ondelete='CASCADE'), nullable=False)
-    nome_completo = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(120), nullable=False)
-    telefone = db.Column(db.String(20))
-    area_profissional = db.Column(db.String(100), nullable=False)
-    experiencia = db.Column(db.Text, nullable=False)
-    formacao = db.Column(db.Text, nullable=False)
-    habilidades = db.Column(db.Text, nullable=False)
-    objetivo = db.Column(db.Text, nullable=False)
-    curriculo_pdf = db.Column(db.LargeBinary)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relacionamentos
-    curriculo_user = db.relationship('User', back_populates='user_curriculos')
 
 def process_image(image_data, max_size=(800, 800)):
     try:
@@ -319,10 +222,10 @@ def create_post():
 @app.route('/profile_image/<int:user_id>')
 def profile_image(user_id):
     try:
-        user = User.query.get_or_404(user_id)
-        if user.profile_picture:
+        profile_photo = ProfilePhoto.query.filter_by(user_id=user_id).first()
+        if profile_photo:
             return send_file(
-                io.BytesIO(user.profile_picture),
+                io.BytesIO(profile_photo.image_data),
                 mimetype='image/jpeg',
                 cache_timeout=0
             )
@@ -494,9 +397,18 @@ def upload_profile_picture():
             processed_image = process_image(image_data, max_size=(400, 400))
             
             if processed_image:
-                # Atualiza o usuário
-                user = User.query.get(session['user_id'])
-                user.profile_picture = processed_image
+                # Atualiza ou cria a foto de perfil
+                profile_photo = ProfilePhoto.query.filter_by(user_id=session['user_id']).first()
+                if profile_photo:
+                    profile_photo.image_data = processed_image
+                    profile_photo.updated_at = datetime.utcnow()
+                else:
+                    profile_photo = ProfilePhoto(
+                        user_id=session['user_id'],
+                        image_data=processed_image
+                    )
+                    db.session.add(profile_photo)
+                
                 db.session.commit()
                 flash('Foto de perfil atualizada com sucesso!', 'success')
             else:

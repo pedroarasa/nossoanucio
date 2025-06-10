@@ -4,9 +4,17 @@ CREATE TABLE IF NOT EXISTS usuários (
     username VARCHAR(80) UNIQUE NOT NULL,
     password VARCHAR(120) NOT NULL,
     location VARCHAR(100),
-    profile_picture BYTEA,
     is_admin BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS fotos_perfil (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES usuários(id) ON DELETE CASCADE,
+    image_data BYTEA NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
 );
 
 CREATE TABLE IF NOT EXISTS posts (
@@ -66,6 +74,7 @@ CREATE TABLE IF NOT EXISTS curriculos (
 );
 
 -- Índices para melhorar a performance
+CREATE INDEX IF NOT EXISTS idx_fotos_perfil_user_id ON fotos_perfil(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_fotos_post_id ON fotos_anuncio(post_id);
 CREATE INDEX IF NOT EXISTS idx_gosta_user_id ON gosta(user_id);
