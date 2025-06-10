@@ -314,18 +314,14 @@ def create_post():
 
 @app.route('/profile_image/<int:user_id>')
 def profile_image(user_id):
-    try:
-        user = User.query.get_or_404(user_id)
-        if user.profile_picture:
-            return send_file(
-                io.BytesIO(user.profile_picture),
-                mimetype='image/jpeg',
-                cache_timeout=0
-            )
-        return send_file('static/img/default_profile.png', mimetype='image/png', cache_timeout=0)
-    except Exception as e:
-        app.logger.error(f"Erro ao carregar imagem do perfil: {str(e)}")
-        return send_file('static/img/default_profile.png', mimetype='image/png', cache_timeout=0)
+    user = User.query.get_or_404(user_id)
+    if user.profile_picture:
+        return send_file(
+            io.BytesIO(user.profile_picture),
+            mimetype='image/jpeg',
+            cache_timeout=0
+        )
+    return send_file('static/img/default_profile.png', mimetype='image/png', cache_timeout=0)
 
 @app.route('/post_image/<int:photo_id>')
 def post_image(photo_id):
@@ -474,31 +470,35 @@ def download_curriculo(curriculo_id):
 @login_required
 def upload_profile_picture():
     if 'profile_picture' not in request.files:
-        flash('Nenhum arquivo selecionado', 'error')
+        flash('Nenhuma imagem selecionada', 'error')
         return redirect(url_for('user_profile', user_id=session['user_id']))
     
     file = request.files['profile_picture']
     if file.filename == '':
-        flash('Nenhum arquivo selecionado', 'error')
+        flash('Nenhuma imagem selecionada', 'error')
         return redirect(url_for('user_profile', user_id=session['user_id']))
     
-    if file and allowed_file(file.filename):
+    if file:
         try:
-            # Ler e processar a imagem
-            image_data = file.read()
-            processed_image = process_image(image_data, max_size=(200, 200))
+            # Processa a imagem
+            img = Image.open(file)
+            img = img.convert('RGB')
+            img = img.resize((200, 200), Image.Resampling.LANCZOS)
             
-            # Atualizar a foto do usuário
+            # Salva em um buffer
+            buffer = io.BytesIO()
+            img.save(buffer, format='JPEG', quality=85)
+            buffer.seek(0)
+            
+            # Atualiza o usuário
             user = User.query.get(session['user_id'])
-            user.profile_picture = processed_image
+            user.profile_picture = buffer.getvalue()
             db.session.commit()
             
             flash('Foto de perfil atualizada com sucesso!', 'success')
         except Exception as e:
-            app.logger.error(f"Erro ao salvar foto de perfil: {str(e)}")
             flash('Erro ao processar a imagem', 'error')
-    else:
-        flash('Tipo de arquivo não permitido', 'error')
+            app.logger.error(f'Erro ao processar imagem: {str(e)}')
     
     return redirect(url_for('user_profile', user_id=session['user_id']))
 

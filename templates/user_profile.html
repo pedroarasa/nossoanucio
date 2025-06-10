@@ -1,30 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}Perfil de {{ user.username }} - Anúncios{% endblock %}
+{% block title %}Perfil de {{ user.username }}{% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container py-4">
     <div class="row">
-        <!-- Informações do Usuário -->
+        <!-- Informações do Perfil -->
         <div class="col-md-4">
             <div class="card mb-4">
                 <div class="card-body text-center">
                     <img src="{{ url_for('profile_image', user_id=user.id) }}" 
-                         class="rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;" 
+                         class="rounded-circle mb-3" 
+                         style="width: 150px; height: 150px; object-fit: cover;"
                          alt="Foto de perfil">
+                    
                     <h4>{{ user.username }}</h4>
                     {% if user.location %}
                     <p class="text-muted">
                         <i class="fas fa-map-marker-alt"></i> {{ user.location }}
                     </p>
                     {% endif %}
-                    <p class="text-muted">
-                        <i class="fas fa-calendar-alt"></i> Membro desde {{ user.created_at.strftime('%d/%m/%Y') }}
-                    </p>
+                    
                     {% if session.get('user_id') == user.id %}
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
-                        <i class="fas fa-edit"></i> Editar Perfil
-                    </button>
                     <form action="{{ url_for('upload_profile_picture') }}" method="post" enctype="multipart/form-data" class="mt-3">
                         <div class="mb-3">
                             <input type="file" class="form-control" name="profile_picture" accept="image/*" required>
@@ -40,23 +37,15 @@
 
         <!-- Anúncios do Usuário -->
         <div class="col-md-8">
-            <h3 class="mb-4">Anúncios de {{ user.username }}</h3>
+            <h4 class="mb-4">Anúncios de {{ user.username }}</h4>
+            
             {% if posts %}
                 {% for post in posts %}
                 <div class="card mb-4">
                     <div class="card-header bg-white">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div class="d-flex align-items-center">
-                                <img src="{{ url_for('profile_image', user_id=post.author.id) }}" 
-                                     class="user-profile-picture me-3" alt="Foto de perfil">
-                                <div>
-                                    <h6 class="mb-0">{{ post.author.username }}</h6>
-                                    <small class="text-muted">
-                                        <i class="fas fa-map-marker-alt"></i> {{ post.author.location }}
-                                    </small>
-                                </div>
-                            </div>
-                            {% if session.get('user_id') == post.user_id or session.get('is_admin') %}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">{{ post.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                            {% if session.get('user_id') == user.id or session.get('is_admin') %}
                             <form action="{{ url_for('delete_post', post_id=post.id) }}" method="post" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este anúncio?');">
                                 <button type="submit" class="btn btn-danger btn-sm">
                                     <i class="fas fa-trash"></i>
@@ -65,18 +54,19 @@
                             {% endif %}
                         </div>
                     </div>
-                    {% if post.photos %}
+                    
+                    {% if post.post_photos %}
                     <div class="position-relative">
                         <div id="carousel-{{ post.id }}" class="carousel slide" data-bs-ride="carousel">
                             <div class="carousel-inner">
-                                {% for photo in post.photos %}
+                                {% for photo in post.post_photos %}
                                 <div class="carousel-item {% if photo.is_main %}active{% endif %}">
                                     <img src="{{ url_for('post_image', photo_id=photo.id) }}" 
-                                         class="card-img-top" style="max-height: 400px; object-fit: cover;" alt="Imagem do anúncio">
+                                         class="post-image" alt="Imagem do anúncio">
                                 </div>
                                 {% endfor %}
                             </div>
-                            {% if post.photos|length > 1 %}
+                            {% if post.post_photos|length > 1 %}
                             <button class="carousel-control-prev" type="button" data-bs-target="#carousel-{{ post.id }}" data-bs-slide="prev">
                                 <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                                 <span class="visually-hidden">Anterior</span>
@@ -90,114 +80,34 @@
                         <div class="price-tag">
                             € {{ "%.2f"|format(post.price) }}
                         </div>
-                        <div class="location-tag">
-                            <i class="fas fa-map-marker-alt"></i> {{ post.author.location }}
-                        </div>
                     </div>
                     {% endif %}
+                    
                     <div class="card-body">
                         <p class="card-text">{{ post.content }}</p>
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                {% if session.get('user_id') %}
-                                <span class="like-button me-2" onclick="likePost({{ post.id }});" id="like-{{ post.id }}">
-                                    <i class="fas fa-heart {% if post.likes|selectattr('user_id', 'equalto', session.get('user_id'))|list %}active{% endif %}"></i>
-                                    <span id="like-count-{{ post.id }}">{{ post.likes|length }}</span>
-                                </span>
-                                {% else %}
                                 <span class="text-muted me-2">
-                                    <i class="fas fa-heart"></i> {{ post.likes|length }}
+                                    <i class="fas fa-heart"></i> {{ post.post_likes|length }}
                                 </span>
-                                {% endif %}
+                                <span class="text-muted me-2">
+                                    <i class="fas fa-thumbs-down"></i> {{ post.post_dislikes|length }}
+                                </span>
                                 <span class="text-muted">
-                                    <i class="fas fa-comment"></i> {{ post.comments|length }}
+                                    <i class="fas fa-comment"></i> {{ post.post_comments|length }}
                                 </span>
                             </div>
-                            <small class="text-muted">{{ post.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
                         </div>
                     </div>
-                    {% if session.get('user_id') %}
-                    <div class="card-footer bg-white">
-                        <form action="{{ url_for('add_comment', post_id=post.id) }}" method="post" class="mb-3">
-                            <div class="input-group">
-                                <input type="text" class="form-control" name="content" placeholder="Adicione um comentário...">
-                                <button class="btn btn-outline-primary" type="submit">
-                                    <i class="fas fa-paper-plane"></i>
-                                </button>
-                            </div>
-                        </form>
-                        {% for comment in post.comments %}
-                        <div class="d-flex mb-2">
-                            <img src="{{ url_for('profile_image', user_id=comment.user.id) }}" 
-                                 class="user-profile-picture me-2" style="width: 30px; height: 30px;" alt="Foto de perfil">
-                            <div class="bg-light rounded p-2 flex-grow-1">
-                                <strong>{{ comment.user.username }}</strong>
-                                <p class="mb-0">{{ comment.content }}</p>
-                                <small class="text-muted">{{ comment.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
                 </div>
                 {% endfor %}
             {% else %}
-                <div class="alert alert-info">
-                    Este usuário ainda não publicou nenhum anúncio.
+                <div class="text-center">
+                    <h4>Nenhum anúncio encontrado</h4>
+                    <p>Este usuário ainda não publicou nenhum anúncio.</p>
                 </div>
             {% endif %}
         </div>
     </div>
 </div>
-
-<!-- Modal de Edição de Perfil -->
-{% if session.get('user_id') == user.id %}
-<div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editProfileModalLabel">Editar Perfil</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form action="{{ url_for('update_profile') }}" method="post" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <label for="location" class="form-label">Localização</label>
-                        <input type="text" class="form-control" id="location" name="location" value="{{ user.location }}">
-                    </div>
-                    <div class="mb-3">
-                        <label for="profile_picture" class="form-label">Foto de Perfil</label>
-                        <input type="file" class="form-control" id="profile_picture" name="profile_picture" accept="image/*">
-                    </div>
-                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-<script>
-function likePost(postId) {
-    fetch(`/post/${postId}/like`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        const likeButton = document.querySelector(`#like-${postId}`);
-        const likeCount = document.querySelector(`#like-count-${postId}`);
-        
-        if (data.action === 'liked') {
-            likeButton.classList.add('active');
-            likeCount.textContent = parseInt(likeCount.textContent) + 1;
-        } else {
-            likeButton.classList.remove('active');
-            likeCount.textContent = parseInt(likeCount.textContent) - 1;
-        }
-    });
-}
-</script>
 {% endblock %} 

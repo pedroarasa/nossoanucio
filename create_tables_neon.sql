@@ -76,13 +76,13 @@ CREATE INDEX IF NOT EXISTS idx_comentarios_user_id ON comentarios(user_id);
 CREATE INDEX IF NOT EXISTS idx_comentarios_post_id ON comentarios(post_id);
 CREATE INDEX IF NOT EXISTS idx_curriculos_user_id ON curriculos(user_id);
 
--- Inserir usuário admin padrão
+-- Inserir usuário admin padrão (senha: admin123)
 INSERT INTO usuários (username, password, is_admin)
 VALUES ('admin', 'pbkdf2:sha256:600000$dQw4w9WgXcQ$8c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9c9', TRUE)
 ON CONFLICT (username) DO NOTHING;
 
--- Criar função para deletar usuário (apenas para administradores)
-CREATE OR REPLACE FUNCTION delete_user(user_id INTEGER, admin_id INTEGER)
+-- Função para deletar usuário (apenas para administradores)
+CREATE OR REPLACE FUNCTION deletar_usuario(admin_id INTEGER, user_id INTEGER)
 RETURNS BOOLEAN AS $$
 BEGIN
     -- Verifica se o usuário que está tentando deletar é admin
@@ -91,7 +91,7 @@ BEGIN
     END IF;
     
     -- Verifica se não está tentando deletar a si mesmo
-    IF user_id = admin_id THEN
+    IF admin_id = user_id THEN
         RETURN FALSE;
     END IF;
     
