@@ -142,25 +142,29 @@ class Curriculo(db.Model):
 
 def process_image(image_data, max_size=(800, 800)):
     try:
-        # Abre a imagem usando PIL
         img = Image.open(io.BytesIO(image_data))
         
         # Converte para RGB se necessário
         if img.mode in ('RGBA', 'P'):
             img = img.convert('RGB')
         
-        # Redimensiona mantendo a proporção
-        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+        # Calcula as novas dimensões mantendo a proporção
+        width, height = img.size
+        ratio = min(max_size[0]/width, max_size[1]/height)
+        new_size = (int(width * ratio), int(height * ratio))
         
-        # Salva a imagem processada
-        output = io.BytesIO()
-        img.save(output, format='JPEG', quality=85, optimize=True)
-        output.seek(0)
+        # Redimensiona a imagem
+        img = img.resize(new_size, Image.Resampling.LANCZOS)
         
-        return output.getvalue()
+        # Salva em um buffer
+        buffer = io.BytesIO()
+        img.save(buffer, format='JPEG', quality=85, optimize=True)
+        buffer.seek(0)
+        
+        return buffer.getvalue()
     except Exception as e:
         app.logger.error(f"Erro ao processar imagem: {str(e)}")
-        return image_data
+        return None
 
 def login_required(f):
     @wraps(f)
@@ -314,28 +318,31 @@ def create_post():
 
 @app.route('/profile_image/<int:user_id>')
 def profile_image(user_id):
-    user = User.query.get_or_404(user_id)
-    if user.profile_picture:
-        return send_file(
-            io.BytesIO(user.profile_picture),
-            mimetype='image/jpeg',
-            cache_timeout=0
-        )
-    return send_file('static/img/default_profile.png', mimetype='image/png', cache_timeout=0)
+    try:
+        user = User.query.get_or_404(user_id)
+        if user.profile_picture:
+            return send_file(
+                io.BytesIO(user.profile_picture),
+                mimetype='image/jpeg',
+                cache_timeout=0
+            )
+        return send_file('static/img/default_profile.png', mimetype='image/png', cache_timeout=0)
+    except Exception as e:
+        app.logger.error(f"Erro ao carregar imagem do perfil: {str(e)}")
+        return send_file('static/img/default_profile.png', mimetype='image/png', cache_timeout=0)
 
 @app.route('/post_image/<int:photo_id>')
 def post_image(photo_id):
     try:
         photo = Photo.query.get_or_404(photo_id)
-        if photo.image_data:
-            return send_file(
-                io.BytesIO(photo.image_data),
-                mimetype='image/jpeg'
-            )
-        return send_file('static/img/default_post.png', mimetype='image/png')
+        return send_file(
+            io.BytesIO(photo.image_data),
+            mimetype='image/jpeg',
+            cache_timeout=0
+        )
     except Exception as e:
         app.logger.error(f"Erro ao carregar imagem do post: {str(e)}")
-        return send_file('static/img/default_post.png', mimetype='image/png')
+        return send_file('static/img/default_post.png', mimetype='image/png', cache_timeout=0)
 
 @app.route('/user/<int:user_id>')
 def user_profile(user_id):
@@ -480,22 +487,20 @@ def upload_profile_picture():
     
     if file:
         try:
-            # Processa a imagem
-            img = Image.open(file)
-            img = img.convert('RGB')
-            img = img.resize((200, 200), Image.Resampling.LANCZOS)
+            # Lê a imagem
+            image_data = file.read()
             
-            # Salva em um buffer
-            buffer = io.BytesIO()
-            img.save(buffer, format='JPEG', quality=85)
-            buffer.seek(0)
+            # Processa a imagem para o perfil (400x400 para melhor qualidade)
+            processed_image = process_image(image_data, max_size=(400, 400))
             
-            # Atualiza o usuário
-            user = User.query.get(session['user_id'])
-            user.profile_picture = buffer.getvalue()
-            db.session.commit()
-            
-            flash('Foto de perfil atualizada com sucesso!', 'success')
+            if processed_image:
+                # Atualiza o usuário
+                user = User.query.get(session['user_id'])
+                user.profile_picture = processed_image
+                db.session.commit()
+                flash('Foto de perfil atualizada com sucesso!', 'success')
+            else:
+                flash('Erro ao processar a imagem', 'error')
         except Exception as e:
             flash('Erro ao processar a imagem', 'error')
             app.logger.error(f'Erro ao processar imagem: {str(e)}')
