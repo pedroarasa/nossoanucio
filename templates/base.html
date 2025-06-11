@@ -40,6 +40,16 @@
             border-radius: 50%;
             border: 2px solid #fff;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background-color: #f8f9fa;
+        }
+        .profile-picture-large {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            background-color: #f8f9fa;
         }
         .btn-announcement {
             background-color: #0d6efd;
@@ -52,9 +62,13 @@
         .like-button, .dislike-button {
             cursor: pointer;
             transition: all 0.3s ease;
+            padding: 5px 10px;
+            border-radius: 20px;
+            background-color: #f8f9fa;
         }
         .like-button:hover, .dislike-button:hover {
             transform: scale(1.1);
+            background-color: #e9ecef;
         }
         .like-button.active i {
             color: #dc3545;
@@ -88,10 +102,13 @@
             transition: all 0.3s ease;
             padding: 10px;
             border-radius: 8px;
+            background-color: #fff;
+            border: 1px solid #eee;
         }
         .user-card:hover {
             background-color: #f8f9fa;
             transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         .post-image {
             width: 100%;
@@ -132,9 +149,24 @@
             height: 30px;
             object-fit: cover;
             border-radius: 50%;
+            border: 1px solid #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            background-color: #f8f9fa;
         }
         /* Responsividade para dispositivos móveis */
         @media (max-width: 768px) {
+            .user-profile-picture {
+                width: 40px;
+                height: 40px;
+            }
+            .profile-picture-large {
+                width: 100px;
+                height: 100px;
+            }
+            .comment-avatar {
+                width: 25px;
+                height: 25px;
+            }
             .post-image {
                 max-height: 300px;
             }
@@ -144,17 +176,17 @@
             .carousel-item img {
                 max-height: 300px;
             }
-            .user-profile-picture {
-                width: 40px;
-                height: 40px;
-            }
-            .comment-avatar {
-                width: 25px;
-                height: 25px;
-            }
         }
         /* Responsividade para tablets */
         @media (min-width: 769px) and (max-width: 1024px) {
+            .user-profile-picture {
+                width: 45px;
+                height: 45px;
+            }
+            .profile-picture-large {
+                width: 120px;
+                height: 120px;
+            }
             .post-image {
                 max-height: 400px;
             }
